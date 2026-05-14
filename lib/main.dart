@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import 'models/cuenta_nextcloud.dart';
 import 'providers/cuentas_provider.dart';
@@ -7,8 +8,10 @@ import 'screens/main_screen.dart';
 import 'services/storage_service.dart';
 import 'theme/theme_app.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting(); // initializes all locales
+  // await initializeDateFormatting('es_ES', null);
   runApp(ProviderScope(child: const MainApp()));
 }
 

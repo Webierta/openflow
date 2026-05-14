@@ -71,14 +71,40 @@ class NextcloudService {
     client.close();
   }
 
-  Future<List<WebDavFile>?>? getFiles({String path = '/'}) async {
+  Future<List<WebDavFile>?>? getFiles({
+    String path = '/',
+    bool onlyDir = false,
+    bool onlyImg = false,
+    WebDavDepth depth = WebDavDepth.one,
+  }) async {
     final uri = PathUri.parse(path);
     try {
-      final responseWebDav = await client.webdav.propfind(
-        uri,
-        depth: WebDavDepth.one,
+      final responseWebDav = await client.webdav.propfind(uri, depth: depth);
+      //return responseWebDav.toWebDavFiles();
+      final listaItems = responseWebDav.toWebDavFiles();
+      listaItems.removeWhere((item) => item.name.trim().isEmpty);
+      //return listaItems;
+      final listaDir = listaItems.where((item) => item.isDirectory).toList();
+      listaDir.sort(
+        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
       );
-      return responseWebDav.toWebDavFiles();
+      if (onlyDir == true) return listaDir;
+
+      final listaFile = listaItems.where((item) => !item.isDirectory).toList();
+      listaFile.sort(
+        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+      );
+
+      if (onlyImg == true) {
+        return listaFile
+            .where(
+              (file) =>
+                  (file.mimeType != null &&
+                  file.mimeType!.startsWith('image/')),
+            )
+            .toList();
+      }
+      return listaDir + listaFile;
     } catch (e) {
       print(e);
       return null;
@@ -105,9 +131,13 @@ class NextcloudService {
     }
   }
 
-  Future<Uint8List?>? getPreview(String path) async {
+  Future<Uint8List?>? getPreview({required String path, int? x, int? y}) async {
     try {
-      final responsePreview = await client.core.preview.getPreview(file: path);
+      final responsePreview = await client.core.preview.getPreview(
+        file: path,
+        x: x,
+        y: y,
+      );
       return responsePreview.body;
     } catch (e) {
       print(e);
@@ -115,12 +145,16 @@ class NextcloudService {
     }
   }
 
-  Future<Uint8List?>? getThumbnail(String path) async {
+  Future<Uint8List?>? getThumbnail({
+    required String path,
+    int? x,
+    int? y,
+  }) async {
     try {
       final responseThumbnail = await client.files.api.getThumbnail(
-        x: 64,
-        y: 64,
         file: path,
+        x: x ?? 64,
+        y: y ?? 64,
       );
       return responseThumbnail.body;
     } catch (e) {
