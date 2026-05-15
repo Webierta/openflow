@@ -10,6 +10,7 @@ import '../utils/format_dates.dart';
 import '../widgets/bottom_bar_app.dart';
 import '../widgets/open_dialog.dart';
 import '../widgets/type_icon.dart';
+import 'open_file_screen.dart';
 
 //part 'files_screen_on_tap_item.dart';
 
@@ -84,10 +85,32 @@ class _FilesScreenState extends State<FilesScreen> {
         //currentPath = '$currentPath/${item.name}';
         //currentPath = '$currentPath/${item.path.name}';
         //currentPath = '$currentPath/${item.name}/';
-        currentPath = '$currentPath/${item.path.name}';
+
+        //currentPath = '$currentPath/${item.path.name}';
+        currentPath = item.path.parent?.path != null
+            ? item.path.parent!.path + item.name
+            : '$currentPath/${item.path.name}';
         paths.add(currentPath);
       });
       initFiles();
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (context) => OpenFileScreen(
+            cuenta: widget.cuenta,
+            item: item,
+            //path: '$currentPath/${item.path.name}',
+            path: item.path.parent?.path != null
+                ? item.path.parent!.path + item.name
+                : '$currentPath/${item.path.name}',
+
+            //file: file,
+            //cuenta: widget.cuenta,
+            //type: TypeOpenFile.image,
+            //content: preview,
+          ),
+        ),
+      );
     }
   }
 
@@ -101,6 +124,9 @@ class _FilesScreenState extends State<FilesScreen> {
       context: context,
       constraints: BoxConstraints(maxWidth: double.infinity),
       builder: (BuildContext contextBottomSheet) {
+        //print('folderPathSelect:' + folderPathSelect);
+        //print(item.path.parent!.path + item.name);
+
         return Padding(
           padding: const EdgeInsets.only(bottom: 20.0),
           child: ListView(
@@ -162,30 +188,34 @@ class _FilesScreenState extends State<FilesScreen> {
                       leading:
                           //folderPathSelect == '${widget.cuenta.server}${item.href}'
                           //folderPathSelect == item.pathFile(currentPath)
+                          //folderPathSelect == '${currentPath.substring(1)}/${item.name}'
                           folderPathSelect ==
-                              '${currentPath.substring(1)}/${item.name}'
+                              '/' + item.path.parent!.path + item.name
                           ? Icon(Icons.check_box)
                           : Icon(Icons.check_box_outline_blank),
                       title:
                           //folderPathSelect == '${widget.cuenta.server}${item.href}'
                           //folderPathSelect == item.pathFile(currentPath)
+                          //folderPathSelect == '${currentPath.substring(1)}/${item.name}'
                           folderPathSelect ==
-                              '${currentPath.substring(1)}/${item.name}'
+                              '/' + item.path.parent!.path + item.name
                           ? Text('Unselect as the destination to move or copy')
                           : Text('Select as the destination to move or copy'),
                       onTap: () {
                         Navigator.pop(contextBottomSheet);
                         //final folderItem = '${widget.cuenta.server}${item.href}';
                         //final folderItem = item.pathFile(currentPath);
+                        //final folderItem = '${currentPath.substring(1)}/${item.name}';
                         final folderItem =
-                            '${currentPath.substring(1)}/${item.name}';
+                            '/' + item.path.parent!.path + item.name;
                         if (folderPathSelect == folderItem) {
                           //resetFolderPathSelect();
                           setState(() => folderPathSelect = '/');
                         } else {
                           setState(() {
+                            //folderPathSelect = '${currentPath.substring(1)}/${item.name}';
                             folderPathSelect =
-                                '${currentPath.substring(1)}/${item.name}';
+                                '/' + item.path.parent!.path + item.name;
                             //folderPathSelect = item.pathFile(currentPath);
                             //folderPathSelect = '${widget.cuenta.server}${item.href}';
                           });
@@ -274,8 +304,8 @@ class _FilesScreenState extends State<FilesScreen> {
                                   child: Text(
                                     currentPath == '/'
                                         ? 'Home'
-                                        //: 'Home$currentPath',
-                                        : 'Home${currentPath.substring(1)}',
+                                        : 'Home/$currentPath',
+                                    //: 'Home${currentPath.substring(1)}',
                                     style: TextStyle(fontSize: 16),
                                     maxLines: 1,
                                   ),
@@ -435,8 +465,9 @@ class _FilesScreenState extends State<FilesScreen> {
                         return ListTile(
                           //selected: folderPathSelect == item.pathFile(currentPath),
                           selected:
+                              //folderPathSelect == '${currentPath.substring(1)}/${item.name}',
                               folderPathSelect ==
-                              '${currentPath.substring(1)}/${item.name}',
+                              '/' + item.path.parent!.path + item.name,
                           selectedColor: Colors.blueAccent,
                           onTap: () => onTapItem(item),
                           leading:
@@ -500,7 +531,6 @@ class _FilesScreenState extends State<FilesScreen> {
                           ),
                           trailing: IconButton(
                             onPressed: () => onTapMore(item),
-
                             /*onPressed: () => onTapMore(
                               context: context,
                               item: item,

@@ -82,7 +82,13 @@ class NextcloudService {
       final responseWebDav = await client.webdav.propfind(uri, depth: depth);
       //return responseWebDav.toWebDavFiles();
       final listaItems = responseWebDav.toWebDavFiles();
-      listaItems.removeWhere((item) => item.name.trim().isEmpty);
+      /*listaItems.removeWhere((item) => item.name.trim().isEmpty);
+      listaItems.removeWhere(
+        (item) => item.hashCode == item.path.parent?.path.hashCode,
+      );*/
+      if (listaItems.isNotEmpty) {
+        listaItems.removeAt(0);
+      }
       //return listaItems;
       final listaDir = listaItems.where((item) => item.isDirectory).toList();
       listaDir.sort(
@@ -137,6 +143,7 @@ class NextcloudService {
         file: path,
         x: x,
         y: y,
+        mode: PreviewGetPreviewMode.fill,
       );
       return responsePreview.body;
     } catch (e) {
