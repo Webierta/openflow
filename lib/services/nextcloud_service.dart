@@ -81,6 +81,7 @@ class NextcloudService {
     try {
       final responseWebDav = await client.webdav.propfind(uri, depth: depth);
       //return responseWebDav.toWebDavFiles();
+      //print(responseWebDav.responses.last.);
       final listaItems = responseWebDav.toWebDavFiles();
       /*listaItems.removeWhere((item) => item.name.trim().isEmpty);
       listaItems.removeWhere(
@@ -164,6 +165,17 @@ class NextcloudService {
         y: y ?? 64,
       );
       return responseThumbnail.body;
+    } catch (e) {
+      print(e);
+      return null;
+    }
+  }
+
+  Future<Uint8List?>? readFileBytes(String path) async {
+    try {
+      var uri = PathUri.parse(path);
+      final responseBytes = await client.webdav.get(uri);
+      return responseBytes;
     } catch (e) {
       print(e);
       return null;

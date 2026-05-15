@@ -3,6 +3,7 @@ import 'package:nextcloud/webdav.dart';
 
 import '../models/cuenta_nextcloud.dart';
 import '../models/destino.dart';
+import '../models/extension_WebDavFile.dart';
 import '../services/nextcloud_service.dart';
 import '../theme/styles_app.dart';
 import '../utils/format_bytes.dart';
@@ -34,7 +35,7 @@ class _FilesScreenState extends State<FilesScreen> {
   TextEditingController renameController = TextEditingController();
 
   //List<CloudFile> directorios = [];
-  String folderPathSelect = '/';
+  String folderPathSelect = '';
   TextEditingController folderController = TextEditingController();
   TextEditingController searchController = TextEditingController();
   List<WebDavFile> allFiles = [];
@@ -87,9 +88,13 @@ class _FilesScreenState extends State<FilesScreen> {
         //currentPath = '$currentPath/${item.name}/';
 
         //currentPath = '$currentPath/${item.path.name}';
-        currentPath = item.path.parent?.path != null
+        /*currentPath = item.path.parent?.path != null
             ? item.path.parent!.path + item.name
-            : '$currentPath/${item.path.name}';
+            : '$currentPath/${item.path.name}';*/
+        //currentPath = item.pathFile() ?? '$currentPath/${item.path.name}';
+        //currentPath = item.pathFile(currentPath);
+        currentPath = item.pathFile(currentPath: currentPath);
+        //currentPath = '$currentPath/${item.name}';
         paths.add(currentPath);
       });
       initFiles();
@@ -100,10 +105,11 @@ class _FilesScreenState extends State<FilesScreen> {
             cuenta: widget.cuenta,
             item: item,
             //path: '$currentPath/${item.path.name}',
-            path: item.path.parent?.path != null
+            /*path: item.path.parent?.path != null
                 ? item.path.parent!.path + item.name
-                : '$currentPath/${item.path.name}',
-
+                : '$currentPath/${item.path.name}',*/
+            path: item.pathFile(currentPath: currentPath),
+            //path: '$currentPath/${item.name}',
             //file: file,
             //cuenta: widget.cuenta,
             //type: TypeOpenFile.image,
@@ -124,9 +130,6 @@ class _FilesScreenState extends State<FilesScreen> {
       context: context,
       constraints: BoxConstraints(maxWidth: double.infinity),
       builder: (BuildContext contextBottomSheet) {
-        //print('folderPathSelect:' + folderPathSelect);
-        //print(item.path.parent!.path + item.name);
-
         return Padding(
           padding: const EdgeInsets.only(bottom: 20.0),
           child: ListView(
@@ -189,16 +192,30 @@ class _FilesScreenState extends State<FilesScreen> {
                           //folderPathSelect == '${widget.cuenta.server}${item.href}'
                           //folderPathSelect == item.pathFile(currentPath)
                           //folderPathSelect == '${currentPath.substring(1)}/${item.name}'
+                          //folderPathSelect == '/' + item.path.parent!.path + item.name
                           folderPathSelect ==
-                              '/' + item.path.parent!.path + item.name
+                              item.pathFile(
+                                currentPath: currentPath,
+                                bar: false,
+                              )
+                          /*folderPathSelect ==
+                              (item.pathFileHome() ??
+                                  '${currentPath.substring(1)}/${item.name}')*/
                           ? Icon(Icons.check_box)
                           : Icon(Icons.check_box_outline_blank),
                       title:
                           //folderPathSelect == '${widget.cuenta.server}${item.href}'
                           //folderPathSelect == item.pathFile(currentPath)
                           //folderPathSelect == '${currentPath.substring(1)}/${item.name}'
+                          //folderPathSelect == '/' + item.path.parent!.path + item.name
+                          /*folderPathSelect ==
+                              (item.pathFileHome() ??
+                                  '${currentPath.substring(1)}/${item.name}')*/
                           folderPathSelect ==
-                              '/' + item.path.parent!.path + item.name
+                              item.pathFile(
+                                currentPath: currentPath,
+                                bar: false,
+                              )
                           ? Text('Unselect as the destination to move or copy')
                           : Text('Select as the destination to move or copy'),
                       onTap: () {
@@ -206,16 +223,29 @@ class _FilesScreenState extends State<FilesScreen> {
                         //final folderItem = '${widget.cuenta.server}${item.href}';
                         //final folderItem = item.pathFile(currentPath);
                         //final folderItem = '${currentPath.substring(1)}/${item.name}';
-                        final folderItem =
-                            '/' + item.path.parent!.path + item.name;
+                        //final folderItem = '/' + item.path.parent!.path + item.name;
+                        final folderItem = item.pathFile(
+                          currentPath: currentPath,
+                          bar: false,
+                        );
+                        /*final folderItem =
+                            item.pathFileHome() ??
+                            '${currentPath.substring(1)}/${item.name}';*/
                         if (folderPathSelect == folderItem) {
                           //resetFolderPathSelect();
-                          setState(() => folderPathSelect = '/');
+                          setState(() => folderPathSelect = '');
                         } else {
                           setState(() {
                             //folderPathSelect = '${currentPath.substring(1)}/${item.name}';
-                            folderPathSelect =
-                                '/' + item.path.parent!.path + item.name;
+                            //folderPathSelect = '/' + item.path.parent!.path + item.name;
+                            folderPathSelect = item.pathFile(
+                              currentPath: currentPath,
+                              bar: false,
+                            );
+                            /*folderPathSelect ==
+                                (item.pathFileHome() ??
+                                    '${currentPath.substring(1)}/${item.name}');*/
+
                             //folderPathSelect = item.pathFile(currentPath);
                             //folderPathSelect = '${widget.cuenta.server}${item.href}';
                           });
@@ -466,16 +496,26 @@ class _FilesScreenState extends State<FilesScreen> {
                           //selected: folderPathSelect == item.pathFile(currentPath),
                           selected:
                               //folderPathSelect == '${currentPath.substring(1)}/${item.name}',
+                              //folderPathSelect == '/' + item.path.parent!.path + item.name,
                               folderPathSelect ==
-                              '/' + item.path.parent!.path + item.name,
+                              item.pathFile(
+                                currentPath: currentPath,
+                                bar: false,
+                              ),
+                          /*folderPathSelect ==
+                              (item.pathFileHome() ??
+                                  '${currentPath.substring(1)}/${item.name}'),*/
                           selectedColor: Colors.blueAccent,
                           onTap: () => onTapItem(item),
                           leading:
                               (item.mimeType != null &&
                                   item.mimeType!.startsWith('image/'))
                               ? FutureBuilder(
-                                  future: nextcloudService.getPreview(
+                                  /*future: nextcloudService.getPreview(
                                     //path: item.path.name,
+                                    path: '$currentPath/${item.path.name}',
+                                  ),*/
+                                  future: nextcloudService.getThumbnail(
                                     path: '$currentPath/${item.path.name}',
                                   ),
                                   builder: (context, snapshot) {
