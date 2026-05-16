@@ -3,9 +3,9 @@ import 'package:nextcloud/webdav.dart';
 
 import '../models/cuenta_nextcloud.dart';
 import '../models/destino.dart';
-import '../models/extension_WebDavFile.dart';
 import '../services/nextcloud_service.dart';
 import '../theme/styles_app.dart';
+import '../utils/extension_WebDavFile.dart';
 import '../utils/format_bytes.dart';
 import '../utils/format_dates.dart';
 import '../widgets/bottom_bar_app.dart';
