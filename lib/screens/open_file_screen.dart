@@ -3,16 +3,18 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:markdown_widget/markdown_widget.dart';
+import 'package:nextcloud/files_sharing.dart';
 import 'package:nextcloud/webdav.dart';
 import 'package:printing/printing.dart';
 
 import '../models/cuenta_nextcloud.dart';
 import '../services/nextcloud_service.dart';
 import '../theme/styles_app.dart';
+import '../utils/extension_Share.dart';
 
-class OpenFileScreen extends StatefulWidget {
+class OpenFileScreen<T> extends StatefulWidget {
   final CuentaNextcloud cuenta;
-  final WebDavFile item;
+  final T item; //final WebDavFile item;
   final String path;
 
   const OpenFileScreen({
@@ -30,13 +32,36 @@ class _OpenFileScreenState extends State<OpenFileScreen> {
   late NextcloudService nextcloudService;
   Uint8List? bytesFile;
   bool loading = false;
+  String? typeItem;
+  String? nameItem;
 
   @override
   void initState() {
     nextcloudService = NextcloudService(cuenta: widget.cuenta);
-    loading = true;
-    readFile();
+    setType();
     super.initState();
+  }
+
+  void setType() {
+    String? tipo;
+    String? nombre;
+    if (widget.item is WebDavFile) {
+      tipo = widget.item.mimeType;
+      nombre = widget.item.name;
+    } else if (widget.item is Share) {
+      tipo = widget.item.mimetype;
+      nombre = (widget.item as Share).name;
+    } else {
+      tipo = null;
+      nombre = null;
+    }
+    if (tipo == null || nombre == null) return;
+    setState(() {
+      loading = true;
+      typeItem = tipo;
+      nameItem = nombre;
+    });
+    readFile();
   }
 
   Future<void> readFile() async {
@@ -53,24 +78,24 @@ class _OpenFileScreenState extends State<OpenFileScreen> {
   }
 
   Widget buildBody() {
-    if (widget.item.mimeType == null) {
+    if (typeItem == null) {
       return Center(child: Text('Formato de archivo no encontrado'));
     }
     if (bytesFile == null) {
       return Center(child: Text('Error de lectura del archivo'));
     }
-    if (widget.item.mimeType!.startsWith('image/')) {
+    if (typeItem!.startsWith('image/')) {
       return Center(
         child: Column(children: [Expanded(child: Image.memory(bytesFile!))]),
       );
     }
-    if (widget.item.mimeType!.startsWith('text/plain')) {
+    if (typeItem!.startsWith('text/plain')) {
       return SingleChildScrollView(
         padding: .all(40),
         child: Text(utf8.decode(bytesFile!)),
       );
     }
-    if (widget.item.mimeType!.startsWith('application/pdf')) {
+    if (typeItem!.startsWith('application/pdf')) {
       return PdfPreview(
         allowPrinting: false,
         allowSharing: false,
@@ -80,7 +105,7 @@ class _OpenFileScreenState extends State<OpenFileScreen> {
         build: (format) => bytesFile!,
       );
     }
-    if (widget.item.mimeType!.startsWith('text/markdown')) {
+    if (typeItem!.startsWith('text/markdown')) {
       return MarkdownWidget(
         data: utf8.decode(bytesFile!),
         padding: .all(40),
@@ -111,7 +136,7 @@ class _OpenFileScreenState extends State<OpenFileScreen> {
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(title: Text(widget.item.name)),
+        appBar: AppBar(title: Text(nameItem!)),
         body: loading == true
             ? Center(child: CircularProgressIndicator())
             : buildBody(),

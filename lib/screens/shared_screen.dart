@@ -12,6 +12,7 @@ import '../utils/format_bytes.dart';
 import '../widgets/bottom_bar_app.dart';
 import '../widgets/snackbar_manager.dart';
 import '../widgets/type_icon.dart';
+import 'open_file_screen.dart';
 
 class SharedScreen extends StatefulWidget {
   final CuentaNextcloud cuenta;
@@ -27,10 +28,7 @@ class _SharedScreenState extends State<SharedScreen> {
 
   //Map<SharedFile, CloudFile> mapFiles = {};
   List<Share> shares = [];
-
   bool isLoading = false;
-
-  //List<SharedFile> allShared = [];
 
   @override
   void initState() {
@@ -42,7 +40,10 @@ class _SharedScreenState extends State<SharedScreen> {
   Future<void> initShared() async {
     setState(() => isLoading = true);
     final responseShares = await nextcloudService.getShares();
-    if (responseShares == null) return;
+    if (responseShares == null) {
+      setState(() => isLoading = false);
+      return;
+    }
     final List<Share> myShares = List.from(responseShares);
     setState(() {
       shares = myShares;
@@ -50,9 +51,23 @@ class _SharedScreenState extends State<SharedScreen> {
     });
   }
 
-  void onTapShared(Share share) async {}
-
-  void openShare(Share share) async {}
+  void onTapShare(Share share) async {
+    if (share.isDir) {
+      //print('ABRIR CARPETA');
+      // o LLEVAR A FILES Y ABRIR ALLÍ
+    } else {
+      if (share.path == null) return;
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (context) => OpenFileScreen<Share>(
+            cuenta: widget.cuenta,
+            item: share,
+            path: share.path!,
+          ),
+        ),
+      );
+    }
+  }
 
   void onTapMore(Share share) {
     showModalBottomSheet(
@@ -146,12 +161,11 @@ class _SharedScreenState extends State<SharedScreen> {
                           }
                         : () async {
                             Navigator.pop(contextBottomSheet);
-                            /*var noCompartir = await nextcloudApi.unshareFile(
-                              int.parse(share.id),
+                            var unShare = await nextcloudService.unshareFile(
+                              share.id,
                             );
-                            if (!context.mounted) return;
-                            if (noCompartir == true) {
-                              //setState(() {});
+                            if (!mounted) return;
+                            if (unShare == true) {
                               SnackbarManager.show(
                                 context: context,
                                 msg: 'El archivo ha dejado de ser compartido',
@@ -163,7 +177,7 @@ class _SharedScreenState extends State<SharedScreen> {
                                 msg: 'Error al dejar de compartir',
                                 error: true,
                               );
-                            }*/
+                            }
                           },
                   ),
                 ],
@@ -268,13 +282,12 @@ class _SharedScreenState extends State<SharedScreen> {
                       itemBuilder: (context, index) {
                         var share = shares[index];
                         return ListTile(
-                          onTap: () => onTapShared(share),
+                          onTap: () => onTapShare(share),
                           titleAlignment: ListTileTitleAlignment.top,
                           leading: share.mimetype.startsWith('image/')
                               ? FutureBuilder(
                                   future: nextcloudService.getThumbnail(
-                                    //path: '$currentPath/${item.path.name}',
-                                    path: share.fileTarget,
+                                    path: share.path ?? share.fileTarget,
                                   ),
                                   builder: (context, snapshot) {
                                     if (snapshot.hasData) {
@@ -289,7 +302,7 @@ class _SharedScreenState extends State<SharedScreen> {
                                   },
                                 )
                               : TypeIcon(
-                                  isDirectory: share.itemType.name == 'folder',
+                                  isDirectory: share.isDir,
                                   fileType: share.mimetype,
                                 ),
                           title: Text(
@@ -300,7 +313,7 @@ class _SharedScreenState extends State<SharedScreen> {
                             crossAxisAlignment: .start,
                             children: [
                               Text(
-                                'in ${share.path == share.fileTarget ? 'Home' : share.name}',
+                                'in ${share.path == share.fileTarget ? 'Home' : share.path}',
                               ),
                               FittedBox(
                                 child: Row(
@@ -316,7 +329,6 @@ class _SharedScreenState extends State<SharedScreen> {
                               ),
                             ],
                           ),
-
                           trailing: IconButton(
                             onPressed: () => onTapMore(share),
                             icon: Icon(Icons.more_vert),

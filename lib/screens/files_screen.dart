@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:nextcloud/webdav.dart';
 
 import '../models/cuenta_nextcloud.dart';
@@ -10,6 +11,7 @@ import '../utils/format_bytes.dart';
 import '../utils/format_dates.dart';
 import '../widgets/bottom_bar_app.dart';
 import '../widgets/open_dialog.dart';
+import '../widgets/snackbar_manager.dart';
 import '../widgets/type_icon.dart';
 import 'open_file_screen.dart';
 
@@ -101,7 +103,7 @@ class _FilesScreenState extends State<FilesScreen> {
     } else {
       Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (context) => OpenFileScreen(
+          builder: (context) => OpenFileScreen<WebDavFile>(
             cuenta: widget.cuenta,
             item: item,
             //path: '$currentPath/${item.path.name}',
@@ -118,6 +120,11 @@ class _FilesScreenState extends State<FilesScreen> {
         ),
       );
     }
+  }
+
+  Future<bool> checkShare(WebDavFile item) async {
+    final path = item.pathFile(currentPath: currentPath, bar: true);
+    return await nextcloudService.isFileShared(path);
   }
 
   void onTapMore(WebDavFile item) {
@@ -138,6 +145,7 @@ class _FilesScreenState extends State<FilesScreen> {
               Divider(),
               Column(
                 mainAxisSize: .min,
+                //crossAxisAlignment: .start,
                 children: [
                   ListTile(
                     leading: Icon(Icons.download),
@@ -147,12 +155,38 @@ class _FilesScreenState extends State<FilesScreen> {
                       //downloadFile(item);
                     },
                   ),
-                  ListTile(
-                    leading: Icon(Icons.link),
-                    title: Text('Share link'),
-                    onTap: () {
-                      Navigator.pop(contextBottomSheet);
-                      //sharedFile(item);
+                  FutureBuilder(
+                    future: checkShare(item),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasData) {
+                        return ListTile(
+                          leading: Icon(
+                            snapshot.data == false
+                                ? Icons.add_link
+                                : Icons.link_off,
+                          ),
+                          title: Text(
+                            snapshot.data == false
+                                ? 'Share link'
+                                : 'Unshare File',
+                          ),
+                          onTap: () {
+                            Navigator.pop(contextBottomSheet);
+                            snapshot.data == false
+                                ? shareFile(item)
+                                : unShareFile(item);
+                          },
+                        );
+                      } else if (snapshot.hasError) {
+                        return ListTile(
+                          leading: Icon(Icons.link),
+                          title: Text('Error checking if the file is shared'),
+                        );
+                      }
+                      return ListTile(
+                        leading: Icon(Icons.link),
+                        title: Text('Checking if the file is shared...'),
+                      );
                     },
                   ),
                   Divider(),
@@ -252,7 +286,38 @@ class _FilesScreenState extends State<FilesScreen> {
                         }
                       },
                     ),
+                    ListTile(
+                      leading: Icon(Icons.sync),
+                      title: Text('Synchronize'),
+                      onTap: () {
+                        Navigator.pop(contextBottomSheet);
+                      },
+                    ),
+                    ListTile(
+                      leading: Icon(Icons.photo_library_outlined),
+                      title: Text('View content in Gallery'),
+                      onTap: () {
+                        Navigator.pop(contextBottomSheet);
+                        /*Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (context) => GalleryScreen(
+                              cuenta: widget.cuenta,
+                              pathGallery: item.pathFile(currentPath),
+                            ),
+                          ),
+                        );*/
+                      },
+                    ),
                   ],
+                  Divider(),
+                  ListTile(
+                    leading: Icon(Icons.delete),
+                    title: Text('Delete'),
+                    onTap: () {
+                      Navigator.pop(contextBottomSheet);
+                      //deleteFile(item.pathFile(currentPath));
+                    },
+                  ),
                 ],
               ),
             ],
@@ -260,6 +325,44 @@ class _FilesScreenState extends State<FilesScreen> {
         );
       },
     );
+  }
+
+  Future<void> shareFile(WebDavFile item) async {
+    String path = '$currentPath/${item.name}';
+    final responseShare = await nextcloudService.shareFile(path: path);
+    if (responseShare.$1 == true) {
+      await Clipboard.setData(ClipboardData(text: responseShare.$2));
+      initFiles();
+    }
+    if (!mounted) return;
+    SnackbarManager.show(
+      context: context,
+      msg: responseShare.$1 == true
+          ? 'Shared link copied to clipboard'
+          : 'Error de shared',
+      error: !responseShare.$1,
+    );
+  }
+
+  Future<void> unShareFile(WebDavFile item) async {
+    String path = '$currentPath/${item.name}';
+    final responseId = await nextcloudService.getIdShare(path);
+    if (responseId == null) return;
+    final responseUnshare = await nextcloudService.unshareFile(responseId);
+    if (!mounted) return;
+    if (responseUnshare == true) {
+      SnackbarManager.show(
+        context: context,
+        msg: 'El archivo ha dejado de ser compartido',
+      );
+      //initFiles();
+    } else {
+      SnackbarManager.show(
+        context: context,
+        msg: 'Error al dejar de compartir',
+        error: true,
+      );
+    }
   }
 
   void _onUploadProgress(double pro) {
@@ -567,6 +670,20 @@ class _FilesScreenState extends State<FilesScreen> {
                               //Text(item.props.davQuotaUsedBytes!.toString()),
                               if (item.mimeType != null) Text(item.mimeType!),
                               //if (item.href != null) Text(item.href!),
+                              //Text(item.)
+                              /*if (item.fileId != null)
+                                FutureBuilder(
+                                  future: nextcloudService.isShare(
+                                    '${item.fileId}',
+                                  ),
+                                  builder: (context, snapshot) {
+                                    if (snapshot.hasData) {
+                                      String isShare = snapshot.data.toString();
+                                      return Text(isShare);
+                                    }
+                                    return Text('N/D');
+                                  },
+                                ),*/
                             ],
                           ),
                           trailing: IconButton(
