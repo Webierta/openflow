@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:nextcloud/files_sharing.dart';
-import 'package:openflow/utils/extension_Share.dart';
+import 'package:openflow/utils/extension_share.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/cuenta_nextcloud.dart';

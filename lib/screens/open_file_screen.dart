@@ -10,7 +10,7 @@ import 'package:printing/printing.dart';
 import '../models/cuenta_nextcloud.dart';
 import '../services/nextcloud_service.dart';
 import '../theme/styles_app.dart';
-import '../utils/extension_Share.dart';
+import '../utils/extension_share.dart';
 
 class OpenFileScreen<T> extends StatefulWidget {
   final CuentaNextcloud cuenta;

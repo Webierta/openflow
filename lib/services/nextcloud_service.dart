@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:built_collection/built_collection.dart';
@@ -8,8 +9,13 @@ import 'package:nextcloud/nextcloud.dart';
 import 'package:nextcloud/notes.dart';
 import 'package:nextcloud/provisioning_api.dart';
 import 'package:nextcloud/webdav.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../models/cuenta_nextcloud.dart';
+
+part 'nextcloud_service_files.dart';
+part 'nextcloud_service_notes.dart';
+part 'nextcloud_service_shares.dart';
 
 class NextcloudService {
   final CuentaNextcloud cuenta;
@@ -35,6 +41,11 @@ class NextcloudService {
       print(e);
       return null;
     }
+  }
+
+  void disconnect() {
+    cuenta.statusAuth = StatusAuth.logout;
+    client.close();
   }
 
   Future<Uint8List?>? getAvatar(String userId) async {
@@ -66,79 +77,6 @@ class NextcloudService {
     }
   }
 
-  void disconnect() {
-    cuenta.statusAuth = StatusAuth.logout;
-    client.close();
-  }
-
-  Future<List<WebDavFile>?>? getFiles({
-    String path = '/',
-    bool onlyDir = false,
-    bool onlyImg = false,
-    WebDavDepth depth = WebDavDepth.one,
-  }) async {
-    final uri = PathUri.parse(path);
-    try {
-      final responseWebDav = await client.webdav.propfind(uri, depth: depth);
-      //return responseWebDav.toWebDavFiles();
-      //print(responseWebDav.responses.last.);
-
-      final listaItems = responseWebDav.toWebDavFiles();
-      /*listaItems.removeWhere((item) => item.name.trim().isEmpty);
-      listaItems.removeWhere(
-        (item) => item.hashCode == item.path.parent?.path.hashCode,
-      );*/
-      if (listaItems.isNotEmpty) {
-        listaItems.removeAt(0);
-      }
-      //return listaItems;
-      final listaDir = listaItems.where((item) => item.isDirectory).toList();
-      listaDir.sort(
-        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
-      );
-      if (onlyDir == true) return listaDir;
-
-      final listaFile = listaItems.where((item) => !item.isDirectory).toList();
-      listaFile.sort(
-        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
-      );
-
-      if (onlyImg == true) {
-        return listaFile
-            .where(
-              (file) =>
-                  (file.mimeType != null &&
-                  file.mimeType!.startsWith('image/')),
-            )
-            .toList();
-      }
-      return listaDir + listaFile;
-    } catch (e) {
-      print(e);
-      return null;
-    }
-  }
-
-  Future<BuiltList<Share>?>? getShares() async {
-    try {
-      final responseShares = await client.filesSharing.shareapi.getShares();
-      return responseShares.body.ocs.data;
-    } catch (e) {
-      print(e);
-      return null;
-    }
-  }
-
-  Future<BuiltList<Note>?>? getNotas() async {
-    try {
-      final responseNotes = await client.notes.getNotes();
-      return responseNotes.body;
-    } catch (e) {
-      print(e);
-      return null;
-    }
-  }
-
   Future<Uint8List?>? getPreview({required String path, int? x, int? y}) async {
     try {
       final responsePreview = await client.core.preview.getPreview(
@@ -150,113 +88,6 @@ class NextcloudService {
       return responsePreview.body;
     } catch (e) {
       print(e);
-      return null;
-    }
-  }
-
-  Future<Uint8List?>? getThumbnail({
-    required String path,
-    int? x,
-    int? y,
-  }) async {
-    try {
-      final responseThumbnail = await client.files.api.getThumbnail(
-        file: path,
-        x: x ?? 64,
-        y: y ?? 64,
-      );
-      return responseThumbnail.body;
-    } catch (e) {
-      print(e);
-      return null;
-    }
-  }
-
-  Future<Uint8List?>? readFileBytes(String path) async {
-    try {
-      var uri = PathUri.parse(path);
-      final responseBytes = await client.webdav.get(uri);
-      return responseBytes;
-    } catch (e) {
-      print(e);
-      return null;
-    }
-  }
-
-  Future<bool> unshareFile(String id) async {
-    try {
-      final responseDelete = await client.filesSharing.shareapi.deleteShare(
-        id: id,
-      );
-      if (responseDelete.statusCode == 200) {
-        return true;
-      } else {
-        return false;
-      }
-    } catch (e) {
-      print(e);
-      return false;
-    }
-  }
-
-  Future<(bool, String)> shareFile({
-    required String path,
-    int? shareType = 3, // 3 = enlace público
-    int? permissions = 1, // 1 = solo lectura, 3 = lectura y escritur
-    int? expireDays = 7, // Opcional: días hasta que el enlace expire
-    String? password, // Opcional: contraseña para el enlace
-  }) async {
-    Map<String, dynamic> json = {
-      'path': path,
-      'shareType': shareType,
-      'permissions': permissions,
-    };
-    try {
-      final responseShare = await client.filesSharing.shareapi.createShare(
-        $body: ShareapiCreateShareRequestApplicationJson.fromJson(json),
-      );
-      if (responseShare.statusCode == 200) {
-        var sharedUrl = responseShare.body.ocs.data.url;
-        if (sharedUrl != null) {
-          return (true, sharedUrl);
-        } else {
-          throw Exception('Error al compartir archivo: NO LINK');
-        }
-      } else {
-        throw Exception(
-          'Error al compartir archivo: ${responseShare.statusCode}',
-        );
-      }
-    } catch (e) {
-      print(e);
-      return (false, '');
-    }
-  }
-
-  Future<bool> isFileShared(String path) async {
-    try {
-      final responseShare = await client.filesSharing.shareapi.getShares(
-        path: path,
-      );
-      return responseShare.body.ocs.data.isNotEmpty;
-    } catch (e) {
-      print('Error checking if file is shared: $e');
-      return false;
-    }
-  }
-
-  Future<String?>? getIdShare(String path) async {
-    try {
-      final responseShare = await client.filesSharing.shareapi.getShares(
-        path: path,
-      );
-      if (responseShare.body.ocs.data.isNotEmpty) {
-        return responseShare.body.ocs.data.first.id;
-      } else {
-        throw Error();
-      }
-    } catch (e) {
-      print('Error checking if file is shared: $e');
       return null;
     }
   }
