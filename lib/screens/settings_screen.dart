@@ -146,7 +146,7 @@ class _ChildreenCuentasState extends ConsumerState<ChildreenCuentas> {
     );
   }
 
-  connectTest(CuentaNextcloud cuenta) async {
+  Future<void> connectTest(CuentaNextcloud cuenta) async {
     Navigator.of(context).pop();
     var nextcloudService = NextcloudService(cuenta: cuenta);
     SnackbarManager.show(

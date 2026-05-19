@@ -69,7 +69,7 @@ extension _OnTapMore on _FilesScreenState {
                     title: Text('Rename'),
                     onTap: () {
                       Navigator.pop(contextBottomSheet);
-                      //renameFile(item.pathFile(currentPath));
+                      renameFile(item.pathFile(currentPath: currentPath));
                     },
                   ),
                   ListTile(
@@ -77,7 +77,7 @@ extension _OnTapMore on _FilesScreenState {
                     title: Text('Move'),
                     onTap: () {
                       Navigator.pop(contextBottomSheet);
-                      //moveFile(item.pathFile(currentPath));
+                      moveFile(item.pathFile(currentPath: currentPath));
                     },
                   ),
                   ListTile(
@@ -87,9 +87,10 @@ extension _OnTapMore on _FilesScreenState {
                       Navigator.pop(contextBottomSheet);
                       //moveCopyFile(item.pathFile(currentPath), OnFile.copy);
                       if (item.isDirectory) {
-                        //copyFolder(pathSource: item.pathFile(currentPath));
+                        copyFolder(item.pathFile(currentPath: currentPath));
+                        //copyFile(item.pathFile(currentPath: currentPath));
                       } else {
-                        //copyFile(pathSource: item.pathFile(currentPath));
+                        copyFile(item.pathFile(currentPath: currentPath));
                       }
                     },
                   ),
@@ -172,7 +173,7 @@ extension _OnTapMore on _FilesScreenState {
                     title: Text('Delete'),
                     onTap: () {
                       Navigator.pop(contextBottomSheet);
-                      //deleteFile(item.pathFile(currentPath));
+                      deleteFile(item.pathFile(currentPath: currentPath));
                     },
                   ),
                 ],
@@ -184,23 +185,232 @@ extension _OnTapMore on _FilesScreenState {
     );
   }
 
+  void showError({String msg = 'Error de descarga'}) {
+    SnackbarManager.show(
+      context: context,
+      msg: 'Error de descarga',
+      error: true,
+    );
+  }
+
   Future<void> downloadFile(WebDavFile item) async {
     String path = item.pathFile(currentPath: currentPath);
-    bool download = await nextcloudService.downloadFile(
-      path: path,
-      name: item.name,
+    final responseBytes = await nextcloudService.readFileBytes(path);
+    if (responseBytes == null) {
+      showError(msg: 'Error obteniendo archivo');
+      return;
+    }
+    final Directory? downloadsDir = await getDownloadsDirectory();
+    if (downloadsDir == null) {
+      showError(msg: 'Error de acceso a la carpeta de descargas');
+      return;
+    }
+    final file = File('${downloadsDir.path}/${item.name}');
+    try {
+      await file.writeAsBytes(responseBytes);
+      if (mounted) {
+        SnackbarManager.show(
+          context: context,
+          msg: 'File downloaded to downloads directory',
+        );
+      }
+    } catch (e) {
+      showError();
+    }
+  }
+
+  Future<void> renameFile(String oldPath) async {
+    var oldName = path_dart.basename(oldPath);
+    renameController.text = oldName;
+    var basePath = path_dart.dirname(oldPath);
+    var newName = await OpenDialog.inputName(
+      context: context,
+      title: 'Input new name',
+      icon: Icons.edit,
+      controller: renameController,
     );
-    if (download == true) {
+    if (newName == null) return;
+    var newPath = '$basePath/$newName';
+    var fileRename = await nextcloudService.moveFile(
+      oldPath: oldPath,
+      newPath: newPath,
+    );
+    if (fileRename == true) {
       initFiles();
     }
     if (mounted) {
       SnackbarManager.show(
         context: context,
-        msg: download == true
-            ? 'File downloaded to downloads directory'
-            : 'Error de descarga',
-        error: !download,
+        msg: fileRename == true
+            ? 'File renamed successfully!'
+            : 'Failed to rename file',
+        error: fileRename == false,
       );
+    }
+  }
+
+  Future<void> moveFile(String oldPath) async {
+    var fileName = path_dart.basename(oldPath);
+    final confirmation = await OpenDialog.confirm(
+      context: context,
+      title: 'Mover Archivo',
+      content: Column(
+        mainAxisSize: .min,
+        crossAxisAlignment: .start,
+        children: [
+          Text('Archivo: $fileName'),
+          const SizedBox(height: 20),
+          Text('Destino : $folderPathSelect/'),
+        ],
+      ),
+    );
+    if (confirmation != true) return;
+    var returnApi = await nextcloudService.moveFile(
+      oldPath: oldPath,
+      newPath: '$folderPathSelect/$fileName',
+    );
+    if (returnApi == true) {
+      initFiles();
+    }
+    if (mounted) {
+      SnackbarManager.show(
+        context: context,
+        msg: returnApi == true ? 'File moved' : 'Failed to move file',
+        error: returnApi == false,
+      );
+    }
+  }
+
+  Future<void> copyFile(String pathSource) async {
+    var fileName = path_dart.basename(pathSource);
+    final confirmation = await OpenDialog.confirm(
+      context: context,
+      title: 'Copiar Archivo',
+      content: Column(
+        mainAxisSize: .min,
+        crossAxisAlignment: .start,
+        children: [
+          Text('Archivo: $fileName'),
+          const SizedBox(height: 20),
+          Text('Destino : $folderPathSelect/'),
+          const SizedBox(height: 20),
+          Text(
+            'Si en destino existe un archivo con el mismo nombre, '
+            'se sobreescribirá.',
+          ),
+        ],
+      ),
+    );
+    if (confirmation == true) {
+      var responseCopy = await nextcloudService.copyFile(
+        oldPath: Uri.decodeFull(pathSource),
+        newPath: '$folderPathSelect/$fileName',
+      );
+      if (responseCopy == true) {
+        initFiles();
+      }
+      if (mounted) {
+        SnackbarManager.show(
+          context: context,
+          msg: responseCopy == true ? 'File copied' : 'Failed to copy file',
+          error: responseCopy == false,
+        );
+      }
+    }
+  }
+
+  Future<bool?> copiarCarpeta({
+    required String rutaOrigen,
+    required String rutaDestino,
+    required int total,
+  }) async {
+    final allFiles = await nextcloudService.getFiles(
+      path: rutaOrigen,
+      //depth: WebDavDepth.infinity,
+    );
+    if (allFiles == null) return false;
+    for (final item in allFiles) {
+      updateCopiedFiles(item.name);
+      onCopyProgress.call(totalFiles: total);
+      if (item.isDirectory) {
+        var nuevaRuta = '$rutaDestino/${item.name}';
+        nuevaRuta = Uri.decodeFull(nuevaRuta);
+        final responseCreate = await nextcloudService.createFolder(nuevaRuta);
+        if (responseCreate == false) return false;
+        await copiarCarpeta(
+          rutaOrigen: '$rutaOrigen/${item.path.name}',
+          rutaDestino: nuevaRuta,
+          total: total,
+        );
+      } else {
+        var rutaFile = '${item.path.parent?.path}${item.name}';
+        final responseCopy = await nextcloudService.copyFile(
+          oldPath: rutaFile,
+          newPath: '$rutaDestino/${item.name}',
+        );
+        if (responseCopy == false) return false;
+      }
+    }
+    return true;
+  }
+
+  Future<void> copyFolder(String pathSource) async {
+    var fileName = path_dart.basename(pathSource);
+    final confirmation = await OpenDialog.confirm(
+      context: context,
+      title: 'Copiar Directorio',
+      content: Column(
+        mainAxisSize: .min,
+        crossAxisAlignment: .start,
+        children: [
+          Text('Carpeta: $fileName'),
+          const SizedBox(height: 20),
+          Text('Destino : $folderPathSelect/'),
+          const SizedBox(height: 20),
+          Text(
+            'Si en destino existe un archivo con el mismo nombre, '
+            'el proceso se abortará.',
+          ),
+        ],
+      ),
+    );
+    if (confirmation == true) {
+      var pathDestino = '$folderPathSelect/$fileName';
+      final total = await nextcloudService.getFiles(
+        path: pathSource,
+        depth: WebDavDepth.infinity,
+      );
+      //print(allFiles?.length);
+      //return;
+      // chequear si existe la carpeta ??
+      final responseCreate = await nextcloudService.createFolder(pathDestino);
+      if (responseCreate == false) {
+        if (mounted) {
+          SnackbarManager.show(
+            context: context,
+            msg: 'Error: proceso abortado',
+            error: true,
+          );
+        }
+        return;
+      }
+      //setLoading(loading: true, texto: 'Copiando archivos...');
+      initCopyProgress();
+      final responseCopy = await copiarCarpeta(
+        rutaOrigen: pathSource,
+        rutaDestino: pathDestino,
+        total: total!.length,
+      );
+      if (responseCopy == false) {
+        resetCopyProgress();
+      }
+      if (mounted) {
+        SnackbarManager.show(
+          context: context,
+          msg: responseCopy == true ? 'Files copied!' : 'Error files copy!',
+          error: responseCopy == false,
+        );
+      }
     }
   }
 
@@ -244,6 +454,27 @@ extension _OnTapMore on _FilesScreenState {
         msg: 'Error al dejar de compartir',
         error: true,
       );
+    }
+  }
+
+  Future<void> deleteFile(String path) async {
+    final confirmation = await OpenDialog.confirm(
+      context: context,
+      title: 'Confirmación requerida',
+      content: Text('Elimina este archivo:\n$path'),
+    );
+    if (confirmation == true) {
+      var deleteFile = await nextcloudService.deleteFile(path);
+      if (deleteFile == true) {
+        initFiles();
+      }
+      if (mounted) {
+        SnackbarManager.show(
+          context: context,
+          msg: deleteFile == true ? 'File deleted' : 'Error',
+          error: deleteFile == false,
+        );
+      }
     }
   }
 }

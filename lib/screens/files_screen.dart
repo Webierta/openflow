@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:nextcloud/webdav.dart';
+import 'package:path/path.dart' as path_dart;
+import 'package:path_provider/path_provider.dart';
 
 import '../models/cuenta_nextcloud.dart';
 import '../models/destino.dart';
@@ -32,8 +36,13 @@ class _FilesScreenState extends State<FilesScreen> {
   String currentPath = '/';
   List<String> paths = [];
   bool isLoading = false;
+
+  //String titleLoading = '';
+  //String txtLoading = '';
   bool isGridView = false;
   double progress = 0;
+  int copiedFiles = 0;
+  String copiedName = '';
   TextEditingController renameController = TextEditingController();
 
   //List<CloudFile> directorios = [];
@@ -115,9 +124,97 @@ class _FilesScreenState extends State<FilesScreen> {
     });
   }
 
+  void updateCopiedFiles(String name) {
+    setState(() {
+      copiedFiles = copiedFiles + 1;
+      copiedName = name;
+    });
+  }
+
+  void resetCopiedFiles() {
+    setState(() {
+      copiedFiles = 0;
+      copiedName = '';
+    });
+  }
+
+  void initCopyProgress() {
+    setState(() {
+      progress = 0.001;
+    });
+  }
+
+  void resetCopyProgress() {
+    setState(() {
+      progress = 0;
+      copiedFiles = 0;
+      copiedName = '';
+    });
+  }
+
+  void onCopyProgress({required int totalFiles}) {
+    var copied = copiedFiles;
+    if (copied > 0) {
+      setState(() {
+        progress = copiedFiles / totalFiles;
+        if (progress >= 1) {
+          progress = 0;
+          resetCopiedFiles();
+        }
+      });
+    }
+  }
+
+  /*void onCopyProgress(double pro) {
+    setState(() {
+      progress = pro / 100;
+      if (pro >= 100) {
+        progress = 0;
+      }
+    });
+  }*/
+
+  void setLoading(bool loading) {
+    setState(() {
+      isLoading = loading;
+    });
+  }
+
+  /*void onProgressCopy(int copied, int total) {
+    setState(() {
+      progress = copied / total;
+      if (progress >= 100) {
+        progress = 0;
+      }
+    });
+  }*/
+
   Future<void> uploadFile() async {}
 
-  Future<void> addFolder() async {}
+  Future<void> addFolder() async {
+    var folderName = await OpenDialog.inputName(
+      context: context,
+      title: 'Input folder name',
+      icon: Icons.create_new_folder,
+      controller: folderController,
+    );
+    if (folderName == null) return;
+    folderController.clear();
+    var newPath = '$currentPath/$folderName';
+    var folderCreate = await nextcloudService.createFolder(newPath);
+    if (folderCreate == true) {
+      initFiles();
+    }
+    if (mounted) {
+      SnackbarManager.show(
+        context: context,
+        msg: folderCreate == true
+            ? 'Folder created successfully!'
+            : 'Failed to create folder',
+        error: folderCreate == false,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -289,7 +386,11 @@ class _FilesScreenState extends State<FilesScreen> {
                         child: Column(
                           mainAxisAlignment: .center,
                           children: [
-                            Text('Progreso de subida de archivo'),
+                            Text(
+                              copiedName.isEmpty
+                                  ? 'Progreso en ejecución'
+                                  : 'Copiando archivos: $copiedName',
+                            ),
                             LinearProgressIndicator(value: progress),
                             Text('${(progress * 100).toStringAsFixed(1)} %'),
                           ],
