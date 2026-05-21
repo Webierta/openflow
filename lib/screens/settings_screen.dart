@@ -87,17 +87,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                   ),
                 Divider(),
-                ListTile(
-                  title: Text('Destino de la Galería'),
-                  subtitle: Text(
-                    'Selecciona el directorio del banco de imágenes '
-                    '(por defecto, Photos). '
-                    'Aunque la Galería busca imágenes en todo el servidor, '
-                    'las imágenes subidas desde Galería se ubican aquí. '
-                    'Para subir imágenes a otro destino, utiliza Archivos.',
-                  ),
-                  // subtitle: dropdown con el listado de directorios en /
-                ),
               ],
             ),
           ),

@@ -4,12 +4,14 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:nextcloud/webdav.dart';
 import 'package:path/path.dart' as path_dart;
 
 import '../models/cuenta_nextcloud.dart';
 import '../models/destino.dart';
 import '../services/nextcloud_service.dart';
+import '../services/storage_data_service.dart';
 import '../theme/styles_app.dart';
 import '../utils/format_dates.dart';
 import '../widgets/bottom_bar_app.dart';
@@ -31,6 +33,8 @@ class GalleryScreen extends StatefulWidget {
 }
 
 class _GalleryScreenState extends State<GalleryScreen> {
+  late FlutterSecureStorage storageData;
+  String dirGallery = 'Photos';
   late NextcloudService nextcloudService;
   StreamController<(WebDavFile, Uint8List)> streamController =
       StreamController<(WebDavFile, Uint8List)>();
@@ -45,8 +49,16 @@ class _GalleryScreenState extends State<GalleryScreen> {
 
   //bool isLoading = false;
 
+  Future<void> initStorage() async {
+    final storage = await StorageDataService.getDirGallery();
+    if (storage != null && storage.isNotEmpty) {
+      setState(() => dirGallery = storage);
+    }
+  }
+
   @override
   void initState() {
+    initStorage();
     nextcloudService = NextcloudService(cuenta: widget.cuenta);
     initGallery();
     super.initState();
@@ -60,6 +72,11 @@ class _GalleryScreenState extends State<GalleryScreen> {
   }
 
   void initGallery() async {
+    if (streamController.isClosed) {
+      streamController = StreamController<(WebDavFile, Uint8List)>();
+      streamController.onResume;
+      //return;
+    }
     streamController
         .addStream(
           nextcloudService.getGallery(path: widget.pathGallery),
@@ -102,6 +119,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
       allowedExtensions: ['jpg', 'png'],
     );
     if (result == null) return;
+
     File file = File(result.files.single.path!);
     FileStat fileStat = await file.stat();
     String fileName = path_dart.basename(file.path);
@@ -109,7 +127,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
     bool responseUpload = await nextcloudService.uploadFile(
       file: file,
       fileStat: fileStat,
-      path: '/Photos/$fileName',
+      path: '/$dirGallery/$fileName',
       onProgress: onProgress,
     );
     if (responseUpload == true) {
@@ -130,6 +148,60 @@ class _GalleryScreenState extends State<GalleryScreen> {
         error: responseUpload != true,
       );
     }
+  }
+
+  Future<void> selectDir() async {
+    final folderTree = await nextcloudService.getFolderTree();
+    if (folderTree == null) return;
+    final List<String> listaDir = [];
+    for (final folder in folderTree) {
+      listaDir.add(folder.basename);
+    }
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return SimpleDialog(
+              contentPadding: .symmetric(horizontal: 24),
+              title: const Text('Directorio de la Galería'),
+              children: <Widget>[
+                const SizedBox(height: 14),
+                Card(
+                  child: ListTile(
+                    leading: Icon(Icons.folder, size: 42),
+                    title: Text(dirGallery),
+                    subtitle: Text('Directorio actual'),
+                    trailing: Icon(Icons.check_circle, color: Colors.green),
+                  ),
+                  /*child: Text(
+                    'Directorio actual: $dirGallery',
+                    style: TextStyle(fontSize: 16),
+                  ),*/
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Selecciona el destino de referencia para el banco de '
+                  'imágenes (por defecto, suele ser Photos). '
+                  'Aunque la Galería busca imágenes en todo el servidor, '
+                  'las imágenes subidas desde Galería se ubican aquí. '
+                  'Utiliza Archivos para subir imágenes a otro destino.',
+                ),
+                for (final dir in listaDir)
+                  SimpleDialogOption(
+                    onPressed: () async {
+                      setState(() => dirGallery = dir);
+                      await StorageDataService.saveDirGallery(dir);
+                    },
+                    child: Text(dir),
+                  ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -183,6 +255,10 @@ class _GalleryScreenState extends State<GalleryScreen> {
                 icon: Icon(Icons.date_range, size: 32, color: Colors.white),
               ),
             ],
+            IconButton(
+              onPressed: selectDir,
+              icon: Icon(Icons.folder, size: 32, color: Colors.white),
+            ),
           ],
         ),
         bottomNavigationBar: BottomBarApp(

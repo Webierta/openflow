@@ -71,8 +71,6 @@ extension NextcloudServiceFiles on NextcloudService {
             continue;*/
           var rutaDir = '$path/${webDavFile.path.name}';
           rutaDir = rutaDir.startsWith('/') ? rutaDir.substring(1) : rutaDir;
-
-          print(rutaDir);
           yield* getGallery(path: rutaDir);
           //continue;
         } else if (webDavFile.mimeType != null &&
@@ -278,6 +276,16 @@ extension NextcloudServiceFiles on NextcloudService {
     } catch (e) {
       print(e);
       return false;
+    }
+  }
+
+  Future<BuiltList<FolderTree>?>? getFolderTree() async {
+    try {
+      final responseFolderTree = await client.files.api.getFolderTree();
+      final folderTree = responseFolderTree.body;
+      return folderTree;
+    } catch (e) {
+      return null;
     }
   }
 }
