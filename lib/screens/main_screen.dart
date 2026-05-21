@@ -2,7 +2,6 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:nextcloud/provisioning_api.dart';
 
 import '../models/cuenta_nextcloud.dart';
 import '../models/destino.dart';
@@ -148,8 +147,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       msg: 'Conectando a ${cuentaSelect!.name}...',
     );
     var nextcloudService = NextcloudService(cuenta: cuentaSelect!);
-    UserDetails? connect = await nextcloudService.connect();
-
+    final connect = await nextcloudService.connect();
     if (connect != null) {
       Uint8List? newAvatar =
           await nextcloudService.getAvatar(connect.id) ?? cuentaSelect!.avatar;

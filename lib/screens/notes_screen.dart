@@ -1,14 +1,11 @@
-import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:nextcloud/notes.dart';
-import 'package:nextcloud/webdav.dart';
 
 import '../models/cuenta_nextcloud.dart';
 import '../models/destino.dart';
 import '../services/nextcloud_service.dart';
 import '../theme/styles_app.dart';
 import '../widgets/bottom_bar_app.dart';
-import 'open_file_screen.dart';
 import 'open_view_screen.dart';
 
 class NotesScreen extends StatefulWidget {
@@ -91,63 +88,6 @@ class _NotesScreenState extends State<NotesScreen> {
       ),
     );
     return;
-
-    String rutaNote = '';
-    var dir = '/Notes/';
-    if (note.category.isEmpty) {
-      rutaNote = dir + note.title;
-    } else {
-      rutaNote = '$dir${note.category}/${note.title}';
-    }
-
-    print(rutaNote);
-    var filesNote = await nextcloudService.getFiles(path: dir);
-    if (filesNote == null || filesNote.isEmpty) return;
-    /*if (filesNote == null) {
-      print('ERROR');
-      return;
-    } else if (filesNote.isEmpty) {
-      print('VACIO');
-      return;
-    } else {
-      print(filesNote.first.name);
-      return;
-    }*/
-    /*print(filesNote.first.name);
-    print(filesNote.first.id);
-    print(filesNote.first.fileId);
-    print(filesNote.first.path.parent?.path);*/
-
-    //var nameNote = removeFrom(note.title, '.');
-    //var n = path_dart.basenameWithoutExtension(filesNote.first.name);
-
-    /*var fileNote = filesNote.firstWhere(
-      (file) => removeFrom(file.name, '.') == note.title,
-    );*/
-
-    WebDavFile? fileNote = filesNote.firstWhereOrNull((file) {
-      String pathFile = '${file.path.parent!.path}${file.name}/${note.title}';
-      if (pathFile.contains('.')) {
-        pathFile = removeFrom(pathFile, '.');
-      }
-      String pathNote = rutaNote.substring(1);
-      //print(valorA + ' = ' + valorB);
-
-      return pathFile == pathNote;
-    });
-    print(fileNote?.mimeType);
-
-    if (fileNote == null || fileNote.mimeType == null) return;
-
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (context) => OpenFileScreen<Note>(
-          cuenta: widget.cuenta,
-          item: note,
-          path: fileNote.mimeType!,
-        ),
-      ),
-    );
   }
 
   Future<void> onTapMore(Note note) async {}

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:nextcloud/webdav.dart';
@@ -41,6 +42,7 @@ class _FilesScreenState extends State<FilesScreen> {
   //String titleLoading = '';
   //String txtLoading = '';
   bool isGridView = false;
+  bool uploading = false;
   double progress = 0;
   int copiedFiles = 0;
   String copiedName = '';
@@ -69,6 +71,8 @@ class _FilesScreenState extends State<FilesScreen> {
 
   Future<void> initFiles([bool isInit = false]) async {
     setState(() {
+      uploading = false;
+      progress = 0;
       isLoading = true;
       if (isInit == false) {
         //depth = '1';
@@ -100,15 +104,6 @@ class _FilesScreenState extends State<FilesScreen> {
       });
       initFiles();
     } else {
-      /*Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (context) => OpenFileScreen<WebDavFile>(
-            cuenta: widget.cuenta,
-            item: item,
-            path: item.pathFile(currentPath: currentPath),
-          ),
-        ),
-      );*/
       Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (context) =>
@@ -120,15 +115,6 @@ class _FilesScreenState extends State<FilesScreen> {
 
   void setFolderPathSelect(String newFolder) {
     setState(() => folderPathSelect = newFolder);
-  }
-
-  void _onUploadProgress(double pro) {
-    setState(() {
-      progress = pro / 100;
-      if (pro >= 100) {
-        progress = 0;
-      }
-    });
   }
 
   void updateCopiedFiles(String name) {
@@ -196,7 +182,44 @@ class _FilesScreenState extends State<FilesScreen> {
     });
   }*/
 
-  Future<void> uploadFile() async {}
+  void onProgress(double pro) {
+    setState(() {
+      progress = pro;
+      if (pro >= 100) {
+        uploading = false;
+        progress = 0;
+      }
+    });
+  }
+
+  Future<void> uploadFile() async {
+    FilePickerResult? result = await FilePicker.pickFiles();
+    if (result == null) return;
+    File file = File(result.files.single.path!);
+    FileStat fileStat = await file.stat();
+    String fileName = path_dart.basename(file.path);
+    setState(() => uploading = true);
+    bool responseUpload = await nextcloudService.uploadFile(
+      file: file,
+      fileStat: fileStat,
+      path: '$currentPath/$fileName',
+      onProgress: onProgress,
+    );
+    if (responseUpload == true) {
+      initFiles();
+    } else {
+      setState(() => uploading = false);
+    }
+    if (mounted) {
+      SnackbarManager.show(
+        context: context,
+        msg: responseUpload == true
+            ? 'File uploaded successfully!'
+            : 'Upload failed',
+        error: responseUpload != true,
+      );
+    }
+  }
 
   Future<void> addFolder() async {
     var folderName = await OpenDialog.inputName(
@@ -386,7 +409,7 @@ class _FilesScreenState extends State<FilesScreen> {
               )
             : LayoutBuilder(
                 builder: (context, constraints) {
-                  if (progress > 0) {
+                  if (uploading == true) {
                     return Center(
                       child: Padding(
                         padding: .symmetric(horizontal: 40),

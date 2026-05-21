@@ -1,3 +1,4 @@
+/*
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -156,9 +157,11 @@ class _OpenFileScreenState extends State<OpenFileScreen> {
       backgroundColor: Theme.of(context).colorScheme.onPrimary,
       context: context,
       builder: (BuildContext context) {
-        /*final Map<String, String> detalles = widget.item.showInfo(
+        */
+/*final Map<String, String> detalles = widget.item.showInfo(
           widget.cuenta.userName,
-        );*/
+        );*/ /*
+
         return Container(
           padding: const EdgeInsets.all(20),
           //height: 200,
@@ -192,9 +195,11 @@ class _OpenFileScreenState extends State<OpenFileScreen> {
                   ),
                 if (pathItem != null)
                   ListTile(title: Text(pathItem!), subtitle: Text('Path')),
-                /*if (detalles.isNotEmpty)
+                */
+/*if (detalles.isNotEmpty)
                   for (String key in detalles.keys)
-                    ListTile(title: Text(detalles[key]!), subtitle: Text(key)),*/
+                    ListTile(title: Text(detalles[key]!), subtitle: Text(key)),*/ /*
+
               ],
             ),
           ),
@@ -278,11 +283,13 @@ class _OpenFileScreenState extends State<OpenFileScreen> {
               ),
               IconButton(
                 onPressed: null,
-                /*onPressed: () => downloadFile(
+                */
+/*onPressed: () => downloadFile(
                   context: context,
                   cuenta: widget.cuenta,
                   file: widget.file,
-                ),*/
+                ),*/ /*
+
                 icon: Icon(Icons.download),
               ),
               IconButton(
@@ -298,3 +305,4 @@ class _OpenFileScreenState extends State<OpenFileScreen> {
     );
   }
 }
+*/

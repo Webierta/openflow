@@ -249,4 +249,35 @@ extension NextcloudServiceFiles on NextcloudService {
       return false;
     }
   }
+
+  Future<bool> uploadFile({
+    required File file,
+    required FileStat fileStat,
+    required String path,
+    void Function(double)? onProgress,
+  }) async {
+    var pathUri = PathUri.parse(path);
+    try {
+      var responseUpload = await client.webdav.putFile(
+        file,
+        fileStat,
+        pathUri,
+        onProgress: onProgress,
+      );
+
+      if (responseUpload.statusCode == 201) {
+        return true;
+      } else {
+        throw Error();
+        //throw DynamiteStatusCodeException();
+        return false;
+      }
+      /*} on DynamiteStatusCodeException catch (r) {
+      print(r.statusCode);
+      return false;*/
+    } catch (e) {
+      print(e);
+      return false;
+    }
+  }
 }

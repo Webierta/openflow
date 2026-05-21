@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:nextcloud/webdav.dart';
+import 'package:path/path.dart' as path_dart;
 
 import '../models/cuenta_nextcloud.dart';
 import '../models/destino.dart';
@@ -10,7 +13,8 @@ import '../services/nextcloud_service.dart';
 import '../theme/styles_app.dart';
 import '../utils/format_dates.dart';
 import '../widgets/bottom_bar_app.dart';
-import 'open_file_screen.dart';
+import '../widgets/snackbar_manager.dart';
+import 'open_view_screen.dart';
 
 class GalleryScreen extends StatefulWidget {
   final CuentaNextcloud cuenta;
@@ -35,6 +39,9 @@ class _GalleryScreenState extends State<GalleryScreen> {
   //final List<Uint8List> imagenes = [];
   //final List<WebDavFile> webDavFiles = [];
   Map<WebDavFile, Uint8List> galleryMap = {};
+
+  bool uploading = false;
+  double progress = 0;
 
   //bool isLoading = false;
 
@@ -61,7 +68,6 @@ class _GalleryScreenState extends State<GalleryScreen> {
         .whenComplete(() {
           streamController.close();
         });
-
     subscription = streamController.stream.listen(
       (data) {
         setState(() {
@@ -78,6 +84,52 @@ class _GalleryScreenState extends State<GalleryScreen> {
         print('Stream closed: ${streamController.isClosed}');
       },
     );
+  }
+
+  void onProgress(double pro) {
+    setState(() {
+      progress = pro;
+      if (pro >= 100) {
+        uploading = false;
+        progress = 0;
+      }
+    });
+  }
+
+  Future<void> uploadImage() async {
+    FilePickerResult? result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'png'],
+    );
+    if (result == null) return;
+    File file = File(result.files.single.path!);
+    FileStat fileStat = await file.stat();
+    String fileName = path_dart.basename(file.path);
+    setState(() => uploading = true);
+    bool responseUpload = await nextcloudService.uploadFile(
+      file: file,
+      fileStat: fileStat,
+      path: '/Photos/$fileName',
+      onProgress: onProgress,
+    );
+    if (responseUpload == true) {
+      setState(() {
+        progress = 0;
+        uploading = false;
+      });
+      initGallery();
+    } else {
+      setState(() => uploading = false);
+    }
+    if (mounted) {
+      SnackbarManager.show(
+        context: context,
+        msg: responseUpload == true
+            ? 'Image uploaded successfully!'
+            : 'Upload failed',
+        error: responseUpload != true,
+      );
+    }
   }
 
   @override
@@ -136,7 +188,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
         bottomNavigationBar: BottomBarApp(
           cuenta: widget.cuenta,
           destino: Destino.gallery,
-          //funcion: null, //uploadFile,
+          funcion: uploadImage,
           //depth: depth,
           //cancelToken: nextcloudApi.cancelToken,
         ),
@@ -157,6 +209,23 @@ class _GalleryScreenState extends State<GalleryScreen> {
                 children: [
                   LayoutBuilder(
                     builder: (context, constraints) {
+                      if (uploading == true) {
+                        return Center(
+                          child: Padding(
+                            padding: .symmetric(horizontal: 40),
+                            child: Column(
+                              mainAxisAlignment: .center,
+                              children: [
+                                Text('Subiendo imagen'),
+                                LinearProgressIndicator(value: progress),
+                                Text(
+                                  '${(progress * 100).toStringAsFixed(1)} %',
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
                       int columns = (constraints.maxWidth / 150).floor();
                       return GridView.builder(
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -177,15 +246,13 @@ class _GalleryScreenState extends State<GalleryScreen> {
                             elevation: 4.0,
                             child: InkWell(
                               onTap: () {
-                                var rutaFile =
-                                    '${webDavFile.path.parent?.path}${webDavFile.name}';
+                                //var rutaFile = '${webDavFile.path.parent?.path}${webDavFile.name}';
                                 Navigator.of(context).push(
                                   MaterialPageRoute<void>(
                                     builder: (context) =>
-                                        OpenFileScreen<WebDavFile>(
+                                        OpenViewScreen<WebDavFile>(
                                           cuenta: widget.cuenta,
                                           item: webDavFile,
-                                          path: rutaFile,
                                         ),
                                   ),
                                 );
