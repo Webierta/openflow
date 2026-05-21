@@ -1,11 +1,15 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:nextcloud/notes.dart';
-import 'package:openflow/services/nextcloud_service.dart';
+import 'package:nextcloud/webdav.dart';
 
 import '../models/cuenta_nextcloud.dart';
 import '../models/destino.dart';
+import '../services/nextcloud_service.dart';
 import '../theme/styles_app.dart';
 import '../widgets/bottom_bar_app.dart';
+import 'open_file_screen.dart';
+import 'open_view_screen.dart';
 
 class NotesScreen extends StatefulWidget {
   final CuentaNextcloud cuenta;
@@ -69,7 +73,82 @@ class _NotesScreenState extends State<NotesScreen> {
     });
   }
 
-  Future<void> onTapNote(Note note) async {}
+  String removeFrom(String s, String marker) {
+    final idx = s.indexOf(marker);
+    return idx == -1 ? s : s.substring(0, idx);
+  }
+
+  Future<void> onTapNote(Note note) async {
+    //if (note. == null) return;
+    //var fileNote = await nextcloudService.getFiles(path: note.);
+    //var nameNote = note.category + note.title;
+    //print(note.category);
+
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) =>
+            OpenViewScreen<Note>(cuenta: widget.cuenta, item: note),
+      ),
+    );
+    return;
+
+    String rutaNote = '';
+    var dir = '/Notes/';
+    if (note.category.isEmpty) {
+      rutaNote = dir + note.title;
+    } else {
+      rutaNote = '$dir${note.category}/${note.title}';
+    }
+
+    print(rutaNote);
+    var filesNote = await nextcloudService.getFiles(path: dir);
+    if (filesNote == null || filesNote.isEmpty) return;
+    /*if (filesNote == null) {
+      print('ERROR');
+      return;
+    } else if (filesNote.isEmpty) {
+      print('VACIO');
+      return;
+    } else {
+      print(filesNote.first.name);
+      return;
+    }*/
+    /*print(filesNote.first.name);
+    print(filesNote.first.id);
+    print(filesNote.first.fileId);
+    print(filesNote.first.path.parent?.path);*/
+
+    //var nameNote = removeFrom(note.title, '.');
+    //var n = path_dart.basenameWithoutExtension(filesNote.first.name);
+
+    /*var fileNote = filesNote.firstWhere(
+      (file) => removeFrom(file.name, '.') == note.title,
+    );*/
+
+    WebDavFile? fileNote = filesNote.firstWhereOrNull((file) {
+      String pathFile = '${file.path.parent!.path}${file.name}/${note.title}';
+      if (pathFile.contains('.')) {
+        pathFile = removeFrom(pathFile, '.');
+      }
+      String pathNote = rutaNote.substring(1);
+      //print(valorA + ' = ' + valorB);
+
+      return pathFile == pathNote;
+    });
+    print(fileNote?.mimeType);
+
+    if (fileNote == null || fileNote.mimeType == null) return;
+
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => OpenFileScreen<Note>(
+          cuenta: widget.cuenta,
+          item: note,
+          path: fileNote.mimeType!,
+        ),
+      ),
+    );
+  }
 
   Future<void> onTapMore(Note note) async {}
 
@@ -258,6 +337,9 @@ class _NotesScreenState extends State<NotesScreen> {
                     itemBuilder: (context, index) {
                       final note = notes[index];
                       return ListTile(
+                        onTap: () {
+                          onTapNote(note);
+                        },
                         leading: IconButton(
                           onPressed: () {
                             changeFavorite(note, !note.favorite);

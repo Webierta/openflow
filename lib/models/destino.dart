@@ -28,6 +28,8 @@ enum Destino {
     required CuentaNextcloud cuenta,
     required BuildContext context,
     //CancelToken? cancelToken,
+    //StreamController? streamController,
+    //StreamSubscription? subscription,
   }) {
     final page = switch (this) {
       Destino.files => FilesScreen(cuenta: cuenta),
@@ -38,9 +40,12 @@ enum Destino {
     return () {
       ScaffoldMessenger.of(context).removeCurrentSnackBar();
       //cancelToken?.cancel();
+      //subscription?.cancel();
+      //streamController?.close();
+
       Navigator.of(
         context,
-      ).push(MaterialPageRoute<void>(builder: (context) => page));
+      ).pushReplacement(MaterialPageRoute<void>(builder: (context) => page));
     };
   }
 

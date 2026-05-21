@@ -12,7 +12,7 @@ import '../utils/format_bytes.dart';
 import '../widgets/bottom_bar_app.dart';
 import '../widgets/snackbar_manager.dart';
 import '../widgets/type_icon.dart';
-import 'open_file_screen.dart';
+import 'open_view_screen.dart';
 
 class SharedScreen extends StatefulWidget {
   final CuentaNextcloud cuenta;
@@ -57,13 +57,19 @@ class _SharedScreenState extends State<SharedScreen> {
       // o LLEVAR A FILES Y ABRIR ALLÍ
     } else {
       if (share.path == null) return;
-      Navigator.of(context).push(
+      /*Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (context) => OpenFileScreen<Share>(
             cuenta: widget.cuenta,
             item: share,
             path: share.path!,
           ),
+        ),
+      );*/
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (context) =>
+              OpenViewScreen<Share>(cuenta: widget.cuenta, item: share),
         ),
       );
     }

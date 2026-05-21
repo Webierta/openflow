@@ -17,7 +17,8 @@ import '../widgets/bottom_bar_app.dart';
 import '../widgets/open_dialog.dart';
 import '../widgets/snackbar_manager.dart';
 import '../widgets/type_icon.dart';
-import 'open_file_screen.dart';
+import 'gallery_screen.dart';
+import 'open_view_screen.dart';
 
 part 'files_screen_on_tap_more.dart';
 
@@ -99,13 +100,19 @@ class _FilesScreenState extends State<FilesScreen> {
       });
       initFiles();
     } else {
-      Navigator.of(context).push(
+      /*Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (context) => OpenFileScreen<WebDavFile>(
             cuenta: widget.cuenta,
             item: item,
             path: item.pathFile(currentPath: currentPath),
           ),
+        ),
+      );*/
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (context) =>
+              OpenViewScreen<WebDavFile>(cuenta: widget.cuenta, item: item),
         ),
       );
     }

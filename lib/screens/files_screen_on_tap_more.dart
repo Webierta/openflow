@@ -156,14 +156,16 @@ extension _OnTapMore on _FilesScreenState {
                       title: Text('View content in Gallery'),
                       onTap: () {
                         Navigator.pop(contextBottomSheet);
-                        /*Navigator.of(context).push(
+                        Navigator.of(context).push(
                           MaterialPageRoute<void>(
                             builder: (context) => GalleryScreen(
                               cuenta: widget.cuenta,
-                              pathGallery: item.pathFile(currentPath),
+                              pathGallery: item.pathFile(
+                                currentPath: currentPath,
+                              ),
                             ),
                           ),
-                        );*/
+                        );
                       },
                     ),
                   ],

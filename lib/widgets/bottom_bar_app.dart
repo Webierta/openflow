@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:nextcloud/webdav.dart';
 
@@ -11,6 +13,9 @@ class BottomBarApp extends StatelessWidget {
   final Future<void> Function()? funcion;
   final WebDavDepth? depth;
 
+  //final StreamController? streamController;
+  //final StreamSubscription? subscription;
+
   //final CancelToken cancelToken;
 
   const BottomBarApp({
@@ -21,6 +26,8 @@ class BottomBarApp extends StatelessWidget {
     //this.depth = '1',
     this.depth = WebDavDepth.one,
     //required this.cancelToken,
+    //this.streamController,
+    //this.subscription,
   });
 
   @override
@@ -36,7 +43,9 @@ class BottomBarApp extends StatelessWidget {
               icon: const Icon(Icons.home, size: 32),
               onPressed: () {
                 ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                Navigator.of(context).push(
+                //subscription?.cancel();
+                //streamController?.close;
+                Navigator.of(context).pushReplacement(
                   MaterialPageRoute<void>(
                     //builder: (context) => CuentaScreen(cuentaSelect: cuenta),
                     builder: (context) => MainScreen(cuentaSelect: cuenta),
@@ -59,6 +68,8 @@ class BottomBarApp extends StatelessWidget {
                   context: context,
                   cuenta: cuenta,
                   //cancelToken: cancelToken,
+                  //streamController: streamController,
+                  //subscription: subscription,
                 ),
               ),
             ),

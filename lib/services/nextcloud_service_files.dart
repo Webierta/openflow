@@ -21,6 +21,9 @@ extension NextcloudServiceFiles on NextcloudService {
       if (listaItems.isNotEmpty) {
         listaItems.removeAt(0);
       }
+      //listaItems.first.size int?
+      //listaItems.first.lastModified DataTime?
+      //listaItems.first.path.name String
 
       final listaDir = listaItems.where((item) => item.isDirectory).toList();
       listaDir.sort(
@@ -46,6 +49,44 @@ extension NextcloudServiceFiles on NextcloudService {
     } catch (e) {
       print(e);
       return null;
+    }
+  }
+
+  Stream<(WebDavFile, Uint8List)> getGallery({
+    String path = '/',
+    WebDavDepth depth = WebDavDepth.one,
+  }) async* {
+    final uri = PathUri.parse(path);
+    try {
+      final responseWebDav = await client.webdav.propfind(uri, depth: depth);
+      final webDavFiles = responseWebDav.toWebDavFiles();
+      if (webDavFiles.isNotEmpty) {
+        webDavFiles.removeAt(0);
+      }
+      for (final webDavFile in webDavFiles) {
+        if (webDavFile.isDirectory) {
+          //if (file.path == '/$rutaInicial' || file.path == '$rutaInicial/') continue;
+          /*if (webDavFile.path.name == '/$path' ||
+              webDavFile.path.name == '$path/')
+            continue;*/
+          var rutaDir = '$path/${webDavFile.path.name}';
+          rutaDir = rutaDir.startsWith('/') ? rutaDir.substring(1) : rutaDir;
+
+          print(rutaDir);
+          yield* getGallery(path: rutaDir);
+          //continue;
+        } else if (webDavFile.mimeType != null &&
+            webDavFile.mimeType!.startsWith('image/')) {
+          var rutaFile = '${webDavFile.path.parent?.path}${webDavFile.name}';
+          //var rutaFile = webDavFile.path.name;
+          final bytes = await readFileBytes(rutaFile);
+          if (bytes != null) {
+            yield (webDavFile, bytes);
+          }
+        }
+      }
+    } catch (e) {
+      print(e);
     }
   }
 
