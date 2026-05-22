@@ -7,7 +7,7 @@ import 'package:nextcloud/provisioning_api.dart';
 import '../models/cuenta_nextcloud.dart';
 import '../providers/cuentas_provider.dart';
 import '../services/nextcloud_service.dart';
-import '../services/storage_service.dart';
+import '../services/secure_storage_service.dart';
 import '../theme/styles_app.dart';
 import '../widgets/open_dialog.dart';
 import '../widgets/snackbar_manager.dart';
@@ -21,6 +21,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  final storageServiceCuentas = SecureStorageService('cuentas');
+
   Future<void> deleteAllCuentas() async {
     final confirmation = await OpenDialog.confirm(
       context: context,
@@ -28,7 +30,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       content: Text('¿Eliminar todas las cuentas?'),
     );
     if (confirmation == true) {
-      await StorageService.clearStorage();
+      //await StorageCuentas.clearStorageCuentas();
+      await storageServiceCuentas.clearStorageCuentas();
       ref.read(cuentasProvider.notifier).clear();
     }
   }
@@ -104,6 +107,8 @@ class ChildreenCuentas extends ConsumerStatefulWidget {
 }
 
 class _ChildreenCuentasState extends ConsumerState<ChildreenCuentas> {
+  final storageServiceCuentas = SecureStorageService('cuentas');
+
   void onTapMoreCuenta(CuentaNextcloud cuenta) {
     showModalBottomSheet(
       showDragHandle: true,
@@ -215,7 +220,8 @@ class _ChildreenCuentasState extends ConsumerState<ChildreenCuentas> {
       ),
     );
     if (confirmation == true) {
-      await StorageService.deleteCuenta(cuenta.name);
+      //await StorageCuentas.deleteCuenta(cuenta.name);
+      await storageServiceCuentas.deleteCuenta(cuenta.name);
       ref.read(cuentasProvider.notifier).remove(cuenta);
     }
   }

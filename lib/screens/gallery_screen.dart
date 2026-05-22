@@ -11,7 +11,7 @@ import 'package:path/path.dart' as path_dart;
 import '../models/cuenta_nextcloud.dart';
 import '../models/destino.dart';
 import '../services/nextcloud_service.dart';
-import '../services/storage_data_service.dart';
+import '../services/secure_storage_service.dart';
 import '../theme/styles_app.dart';
 import '../utils/format_dates.dart';
 import '../widgets/bottom_bar_app.dart';
@@ -33,6 +33,8 @@ class GalleryScreen extends StatefulWidget {
 }
 
 class _GalleryScreenState extends State<GalleryScreen> {
+  final storageServiceGeneral = SecureStorageService('general');
+
   late FlutterSecureStorage storageData;
   String dirGallery = 'Photos';
   late NextcloudService nextcloudService;
@@ -50,15 +52,16 @@ class _GalleryScreenState extends State<GalleryScreen> {
   //bool isLoading = false;
 
   Future<void> initStorage() async {
-    final storage = await StorageDataService.getDirGallery();
-    if (storage != null && storage.isNotEmpty) {
-      setState(() => dirGallery = storage);
+    //final storage = await StorageDataService.getDirGallery();
+    final storageDir = await storageServiceGeneral.getDirGallery();
+    if (storageDir != null && storageDir.isNotEmpty) {
+      setState(() => dirGallery = storageDir);
     }
   }
 
   @override
   void initState() {
-    //initStorage();
+    initStorage();
     nextcloudService = NextcloudService(cuenta: widget.cuenta);
     initGallery();
     super.initState();
@@ -192,7 +195,8 @@ class _GalleryScreenState extends State<GalleryScreen> {
                   SimpleDialogOption(
                     onPressed: () async {
                       setState(() => dirGallery = dir);
-                      await StorageDataService.saveDirGallery(dir);
+                      //await StorageDataService.saveDirGallery(dir);
+                      await storageServiceGeneral.saveDirGallery(dir);
                     },
                     child: Text(dir),
                   ),

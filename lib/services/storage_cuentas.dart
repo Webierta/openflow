@@ -1,22 +1,23 @@
+/*
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../models/cuenta_nextcloud.dart';
 
-class StorageService {
-  static final StorageService _instance = StorageService._internal();
+class StorageCuentas {
+  static final StorageCuentas _instance = StorageCuentas._internal();
 
-  factory StorageService() => _instance;
+  factory StorageCuentas() => _instance;
 
-  StorageService._internal();
+  StorageCuentas._internal();
 
-  static final FlutterSecureStorage _storageService = FlutterSecureStorage();
+  static final _storageCuentas = FlutterSecureStorage();
 
-  static Future<Map<String, String>> getStorage() async {
-    return await _storageService.readAll();
+  static Future<Map<String, String>> getCuentas() async {
+    return await _storageCuentas.readAll();
   }
 
   static Future<bool> existeCuenta(CuentaNextcloud cuenta) async {
-    return await _storageService.containsKey(key: cuenta.name);
+    return await _storageCuentas.containsKey(key: cuenta.name);
   }
 
   static Future<void> saveCuenta(CuentaNextcloud cuenta) async {
@@ -24,14 +25,14 @@ class StorageService {
     if (existeKey == true) {
       deleteCuenta(cuenta.name);
     }
-    await _storageService.write(
+    await _storageCuentas.write(
       key: cuenta.name,
       value: CuentaNextcloud.serialize(cuenta),
     );
   }
 
   static Future<CuentaNextcloud?> getCuenta(String name) async {
-    String? cuenta = await _storageService.read(key: name);
+    String? cuenta = await _storageCuentas.read(key: name);
     if (cuenta != null) {
       return CuentaNextcloud.deserialize(cuenta);
     }
@@ -39,10 +40,11 @@ class StorageService {
   }
 
   static Future<void> deleteCuenta(String name) async {
-    await _storageService.delete(key: name);
+    await _storageCuentas.delete(key: name);
   }
 
-  static Future<void> clearStorage() async {
-    await _storageService.deleteAll();
+  static Future<void> clearStorageCuentas() async {
+    await _storageCuentas.deleteAll();
   }
 }
+*/

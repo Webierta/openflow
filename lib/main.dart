@@ -5,7 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'models/cuenta_nextcloud.dart';
 import 'providers/cuentas_provider.dart';
 import 'screens/main_screen.dart';
-import 'services/storage_service.dart';
+import 'services/secure_storage_service.dart';
 import 'theme/theme_app.dart';
 
 void main() async {
@@ -24,15 +24,19 @@ class MainApp extends ConsumerStatefulWidget {
 
 class _MainAppState extends ConsumerState<MainApp> {
   Future<void> getStorage() async {
-    await StorageService.clearStorage();
-    final storage = await StorageService.getStorage();
+    //await StorageCuentas.clearStorageCuentas();
+    //final storage = await StorageCuentas.getCuentas();
+    final storageServiceCuentas = SecureStorageService('cuentas');
+    //storageService.clearStorageCuentas();
+    //storageService.clearStorageGeneral();
+    final storageCuentas = await storageServiceCuentas.getAllCuentas();
     List<String> cuentasName = [];
-    storage.forEach((key, value) {
+    storageCuentas.forEach((key, value) {
       cuentasName.add(key);
     });
     List<CuentaNextcloud> cuentasStorage = [];
     for (var name in cuentasName) {
-      var cuenta = await StorageService.getCuenta(name);
+      var cuenta = await storageServiceCuentas.getCuenta(name);
       if (cuenta != null) {
         cuentasStorage.add(cuenta);
       }

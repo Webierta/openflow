@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/cuenta_nextcloud.dart';
 import '../providers/cuentas_provider.dart';
-import '../services/storage_service.dart';
+import '../services/secure_storage_service.dart';
 import '../theme/styles_app.dart';
 import '../widgets/snackbar_manager.dart';
 import 'main_screen.dart';
@@ -18,6 +18,7 @@ class AddCuentaScreen extends ConsumerStatefulWidget {
 }
 
 class _AddCuentaScreenState extends ConsumerState<AddCuentaScreen> {
+  final storageServiceCuentas = SecureStorageService('cuentas');
   final serverController = TextEditingController();
   final userController = TextEditingController();
   final paswController = TextEditingController();
@@ -54,7 +55,8 @@ class _AddCuentaScreenState extends ConsumerState<AddCuentaScreen> {
     }
 
     if (widget.cuentaEdit != null) {
-      await StorageService.deleteCuenta(widget.cuentaEdit!.name);
+      //await StorageCuentas.deleteCuenta(widget.cuentaEdit!.name);
+      await storageServiceCuentas.deleteCuenta(widget.cuentaEdit!.name);
       ref.read(cuentasProvider.notifier).remove(widget.cuentaEdit!);
     }
     CuentaNextcloud newCuenta = CuentaNextcloud(
@@ -63,7 +65,8 @@ class _AddCuentaScreenState extends ConsumerState<AddCuentaScreen> {
       password: paswController.text,
       statusAuth: StatusAuth.logout,
     );
-    await StorageService.saveCuenta(newCuenta);
+    //await StorageCuentas.saveCuenta(newCuenta);
+    await storageServiceCuentas.saveCuenta(newCuenta);
     ref.read(cuentasProvider.notifier).add(newCuenta);
     //ref.read(cuentasProvider.notifier).edit...
     if (mounted) {

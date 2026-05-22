@@ -340,7 +340,8 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                   physics: NeverScrollableScrollPhysics(),
                   children: List.generate(Destino.values.length, (index) {
                     var destino = Destino.values[index];
-                    var color = destino.color.withAlpha(130);
+                    //var color = destino.color.withAlpha(130);
+                    var color = destino.color.withAlpha(100);
                     return Container(
                       padding: const EdgeInsets.all(20),
                       color: color,
