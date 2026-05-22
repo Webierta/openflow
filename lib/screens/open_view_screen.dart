@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'package:markdown_widget/markdown_widget.dart';
 import 'package:nextcloud/files_sharing.dart';
 import 'package:nextcloud/notes.dart';
 import 'package:nextcloud/webdav.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
 
 import '../models/cuenta_nextcloud.dart';
@@ -14,6 +16,7 @@ import '../theme/styles_app.dart';
 import '../utils/extension_share.dart';
 import '../utils/format_bytes.dart';
 import '../utils/format_dates.dart';
+import '../widgets/snackbar_manager.dart';
 
 class OpenViewScreen<T> extends StatefulWidget {
   final CuentaNextcloud cuenta;
@@ -59,6 +62,7 @@ class _OpenViewScreenState extends State<OpenViewScreen> {
       final note = (widget.item as Note);
       setState(() {
         itemName = note.title;
+        txtContent = note.content;
       });
     }
     print(itemName);
@@ -195,6 +199,53 @@ class _OpenViewScreenState extends State<OpenViewScreen> {
     );
   }
 
+  void showError({String msg = 'Error de descarga'}) {
+    SnackbarManager.show(
+      context: context,
+      msg: 'Error de descarga',
+      error: true,
+    );
+  }
+
+  Future<void> downloadFile() async {
+    //String path = item.pathFile(currentPath: currentPath);
+    /*String path = item.path.parent!.path + item.name;
+    final responseBytes = await nextcloudService.readFileBytes(path);
+    if (responseBytes == null) {
+      showError(msg: 'Error obteniendo archivo');
+      return;
+    }*/
+    if (itemName == null) {
+      print('SIN NOMBRE');
+      return;
+    }
+    if (bytesFile == null) {
+      if (txtContent == null) {
+        print('SIN CONTENIDO');
+        return;
+      }
+      bytesFile = utf8.encode(txtContent!);
+    }
+
+    final Directory? downloadsDir = await getDownloadsDirectory();
+    if (downloadsDir == null) {
+      showError(msg: 'Error de acceso a la carpeta de descargas');
+      return;
+    }
+    final file = File('${downloadsDir.path}/$itemName');
+    try {
+      await file.writeAsBytes(bytesFile!);
+      if (mounted) {
+        SnackbarManager.show(
+          context: context,
+          msg: 'File downloaded to downloads directory',
+        );
+      }
+    } catch (e) {
+      showError();
+    }
+  }
+
   Widget buildBody() {
     if (loading == true) {
       return Center(child: CircularProgressIndicator());
@@ -314,7 +365,7 @@ class _OpenViewScreenState extends State<OpenViewScreen> {
                 icon: const Icon(Icons.info),
               ),
               IconButton(
-                onPressed: null,
+                onPressed: downloadFile,
                 /*onPressed: () => downloadFile(
                   context: context,
                   cuenta: widget.cuenta,
