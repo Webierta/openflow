@@ -1,11 +1,20 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:nextcloud/notes.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../models/cuenta_nextcloud.dart';
 import '../models/destino.dart';
 import '../services/nextcloud_service.dart';
+import '../services/secure_storage_service.dart';
 import '../theme/styles_app.dart';
+import '../utils/extension_note.dart';
 import '../widgets/bottom_bar_app.dart';
+import '../widgets/open_dialog.dart';
+import '../widgets/snackbar_manager.dart';
 import 'open_view_screen.dart';
 
 class NotesScreen extends StatefulWidget {
@@ -19,6 +28,9 @@ class NotesScreen extends StatefulWidget {
 
 class _NotesScreenState extends State<NotesScreen> {
   late NextcloudService nextcloudService;
+  late Settings settings;
+  final storageServiceGeneral = SecureStorageService('general');
+  List<Note> notesApi = [];
   List<Note> notes = [];
   String? category;
   Set<String> categorias = {''};
@@ -31,13 +43,35 @@ class _NotesScreenState extends State<NotesScreen> {
   //Map<Note, CloudFile> mapFiles = {};
   int totalNotes = 0;
 
-  //TextEditingController renameController = TextEditingController();
+  TextEditingController inputController = TextEditingController();
 
   @override
   void initState() {
     nextcloudService = NextcloudService(cuenta: widget.cuenta);
+    getSettings();
+    dropdownValue = categorias.first;
     initNotes();
     super.initState();
+  }
+
+  Future<void> getSettings() async {
+    final responseSettings = await nextcloudService.client.notes.getSettings();
+    Settings settingsNote = responseSettings.body;
+
+    await storageServiceGeneral.saveNotesSettings(
+      nameCuenta: widget.cuenta.name,
+      settings: settingsNote,
+      //settings: settingsNote.toJsonString(),
+    );
+    //print(jsonEncode(settingsNote));
+    setState(() => settings = settingsNote);
+  }
+
+  @override
+  void dispose() {
+    //nextcloudService.client.close();
+    inputController.dispose();
+    super.dispose();
   }
 
   Future<void> initNotes() async {
@@ -64,6 +98,7 @@ class _NotesScreenState extends State<NotesScreen> {
       }
     }
     setState(() {
+      notesApi = myNotes;
       notes = myNotes;
       mapCategories = map;
       isLoading = false;
@@ -76,11 +111,6 @@ class _NotesScreenState extends State<NotesScreen> {
   }
 
   Future<void> onTapNote(Note note) async {
-    //if (note. == null) return;
-    //var fileNote = await nextcloudService.getFiles(path: note.);
-    //var nameNote = note.category + note.title;
-    //print(note.category);
-
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) =>
@@ -90,11 +120,235 @@ class _NotesScreenState extends State<NotesScreen> {
     return;
   }
 
-  Future<void> onTapMore(Note note) async {}
+  Future<bool> checkShare(Note note) async {
+    String path = note.getPath(settings: settings);
+    return await nextcloudService.isFileShared(path);
+  }
 
-  Future<void> openNote(Note note) async {}
+  Future<void> shareNote(Note note) async {
+    String path = note.getPath(settings: settings);
+    final responseShare = await nextcloudService.shareFile(path: path);
+    if (responseShare.$1 == true) {
+      await Clipboard.setData(ClipboardData(text: responseShare.$2));
+      initNotes();
+    }
+    if (!mounted) return;
+    SnackbarManager.show(
+      context: context,
+      msg: responseShare.$1 == true
+          ? 'Shared link copied to clipboard'
+          : 'Error al dejar de compartir. Comprueba que la extensión del archivo ',
+      error: !responseShare.$1,
+    );
+  }
 
-  Future<void> changeFavorite(Note note, bool isFavorite) async {}
+  Future<void> unShareNote(Note note) async {
+    String path = note.getPath(settings: settings);
+    final responseId = await nextcloudService.getIdShare(path);
+    if (responseId == null) return;
+    final responseUnshare = await nextcloudService.unshareFile(responseId);
+    if (!mounted) return;
+    SnackbarManager.show(
+      context: context,
+      msg: responseUnshare == true
+          ? 'El archivo ha dejado de ser compartido'
+          : 'Error al dejar de compartir. Comprueba que la extensión del archivo ',
+      error: responseUnshare != true,
+    );
+  }
+
+  Future<void> updateNote({
+    required Note note,
+    String? title,
+    String? content,
+    String? category,
+    bool? isFavorite,
+  }) async {
+    final responseUpdate = await nextcloudService.updateNote(
+      note: note,
+      title: title,
+      content: content,
+      category: category,
+      isFavorite: isFavorite,
+    );
+    if (responseUpdate == true) initNotes();
+    if (mounted) {
+      SnackbarManager.show(
+        context: context,
+        msg: responseUpdate == true ? 'Note update!' : 'Failed to updated note',
+        error: responseUpdate != true,
+      );
+    }
+  }
+
+  Future<void> deleteNote(Note note) async {
+    final confirmation = await OpenDialog.confirm(
+      context: context,
+      title: 'Confirmación requerida',
+      content: Text('Elimina esta nota:\n${note.title}'),
+    );
+    if (confirmation == true) {
+      var deleteNote = await nextcloudService.deleteNote(note);
+      if (deleteNote == true) initNotes();
+      if (mounted) {
+        SnackbarManager.show(
+          context: context,
+          msg: deleteNote == true ? 'Note deleted' : 'Error',
+          error: deleteNote != true,
+        );
+      }
+    }
+  }
+
+  Future<void> onTapMore(Note note) async {
+    showModalBottomSheet(
+      showDragHandle: true,
+      isScrollControlled: false,
+      scrollControlDisabledMaxHeightRatio: 0.7,
+      barrierColor: Colors.white70,
+      backgroundColor: Theme.of(context).colorScheme.onPrimary,
+      context: context,
+      constraints: BoxConstraints(maxWidth: double.infinity),
+      builder: (BuildContext contextBottomSheet) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 20.0),
+          child: ListView(
+            children: [
+              Center(child: Text(note.title, style: TextStyle(fontSize: 22))),
+              Divider(),
+              Column(
+                mainAxisSize: .min,
+                children: [
+                  ListTile(
+                    leading: Icon(Icons.download),
+                    title: Text('Download'),
+                    onTap: () {
+                      Navigator.pop(contextBottomSheet);
+                      //downloadNote(note);
+                    },
+                  ),
+                  FutureBuilder(
+                    future: checkShare(note),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasData) {
+                        return ListTile(
+                          leading: Icon(
+                            snapshot.data == false
+                                ? Icons.add_link
+                                : Icons.link_off,
+                          ),
+                          title: Text(
+                            snapshot.data == false
+                                ? 'Share link'
+                                : 'Unshare Note',
+                          ),
+                          onTap: () {
+                            Navigator.pop(contextBottomSheet);
+                            snapshot.data == false
+                                ? shareNote(note)
+                                : unShareNote(note);
+                          },
+                        );
+                      } else if (snapshot.hasError) {
+                        return ListTile(
+                          leading: Icon(Icons.link),
+                          title: Text('Error checking if the file is shared'),
+                        );
+                      } else {
+                        return ListTile(
+                          leading: Icon(Icons.link),
+                          title: Text('Checking if the file is shared...'),
+                        );
+                      }
+                    },
+                  ),
+                  /*ListTile(
+                    leading: Icon(Icons.link),
+                    title: Text('Share link'),
+                    onTap: () {
+                      Navigator.pop(contextBottomSheet);
+                      //sharedNote(note);
+                    },
+                  ),*/
+                  Divider(),
+                  ListTile(
+                    leading: Icon(Icons.drive_file_rename_outline),
+                    title: Text('Rename'),
+                    subtitle: Text('Solo formatos .md y .txt'),
+                    onTap: () async {
+                      Navigator.pop(contextBottomSheet);
+                      var newName = await OpenDialog.inputName(
+                        context: context,
+                        title: 'Input new name for this note',
+                        icon: Icons.edit,
+                        controller: inputController,
+                      );
+                      if (newName == null) return;
+                      updateNote(note: note, title: newName);
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.category),
+                    title: Text('Change Category'),
+                    onTap: () async {
+                      Navigator.pop(contextBottomSheet);
+                      var newCategory = await OpenDialog.inputName(
+                        context: context,
+                        title: 'Input new category name for this note',
+                        icon: Icons.edit,
+                        controller: inputController,
+                      );
+                      if (newCategory == null) return;
+                      updateNote(note: note, category: newCategory);
+                    },
+                  ),
+                  Divider(),
+                  ListTile(
+                    leading: Icon(Icons.delete),
+                    title: Text('Delete'),
+                    onTap: () {
+                      Navigator.pop(contextBottomSheet);
+                      deleteNote(note);
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void showError({String msg = 'Error de descarga'}) {
+    SnackbarManager.show(
+      context: context,
+      msg: 'Error de descarga',
+      error: true,
+    );
+  }
+
+  Future<void> downloadNote(Note note) async {
+    final Directory? downloadsDir = await getDownloadsDirectory();
+    if (downloadsDir == null) {
+      showError(msg: 'Error de acceso a la carpeta de descargas');
+      return;
+    }
+    final file = File('${downloadsDir.path}/${note.title}');
+    final bytesFile = utf8.encode(note.content);
+
+    try {
+      await file.writeAsBytes(bytesFile);
+      if (mounted) {
+        SnackbarManager.show(
+          context: context,
+          msg: 'File downloaded to downloads directory',
+        );
+      }
+    } catch (e) {
+      showError();
+    }
+  }
 
   Future<void> newNote() async {}
 
@@ -145,7 +399,8 @@ class _NotesScreenState extends State<NotesScreen> {
                             CircleAvatar(
                               child: Text(
                                 value.isEmpty
-                                    ? '$totalNotes'
+                                    //? '$totalNotes'
+                                    ? '${notesApi.length}'
                                     : '${mapCategories[value]}',
                               ),
                             ),
@@ -177,8 +432,61 @@ class _NotesScreenState extends State<NotesScreen> {
     );
   }
 
+  Future<void> viewSettings() async {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text('Ajustes'),
+          content: Column(
+            mainAxisSize: .min,
+            crossAxisAlignment: .start,
+            children: [
+              Text(
+                'Ajustes generales utilizados por este servidor para Notas.',
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                title: Text(settings.notesPath),
+                subtitle: Text('Directorio para notas.'),
+              ),
+              ListTile(
+                title: Text(settings.fileSuffix),
+                subtitle: Text(
+                  'Extensión de archivo por defecto. Si utilizas otra extensión, '
+                  'algunas funciones pueden no estar disponibles.',
+                ),
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Close'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (category != null) {
+      notes = notesApi.where((note) => note.category == category).toList();
+      if (filterFavorites == true) {
+        notes = notes.where((note) => note.favorite == true).toList();
+      }
+    } else {
+      notes = notesApi;
+      if (filterFavorites == true) {
+        notes = notes.where((note) => note.favorite == true).toList();
+      }
+    }
+
     return Container(
       decoration: StylesApp.backgroundScreen(context),
       child: Scaffold(
@@ -188,16 +496,11 @@ class _NotesScreenState extends State<NotesScreen> {
           leadingWidth: 40,
           leading: Padding(
             padding: const EdgeInsets.all(4.0),
-            /*child: CuentaAvatar(
-              cuenta: widget.cuenta,
-              size: 30,
-              onlyAvatar: true,
-            ),*/
             child: widget.cuenta.avatar != null
                 ? Image.memory(widget.cuenta.avatar!, height: 30, width: 30)
                 : Icon(Icons.person_off, size: 30, color: Colors.grey),
           ),
-          title: Text('Notes: ${notes.length}'),
+          title: Text('Notes: ${notesApi.length}'),
           actions: [
             IconButton(
               tooltip: 'Sort by name',
@@ -219,6 +522,10 @@ class _NotesScreenState extends State<NotesScreen> {
                 });
               },
               icon: Icon(Icons.date_range, size: 32, color: Colors.white),
+            ),
+            IconButton(
+              onPressed: viewSettings,
+              icon: Icon(Icons.settings, size: 32, color: Colors.white),
             ),
           ],
           bottom: isLoading == false
@@ -277,12 +584,11 @@ class _NotesScreenState extends State<NotesScreen> {
                     itemBuilder: (context, index) {
                       final note = notes[index];
                       return ListTile(
-                        onTap: () {
-                          onTapNote(note);
-                        },
+                        onTap: () => onTapNote(note),
                         leading: IconButton(
                           onPressed: () {
-                            changeFavorite(note, !note.favorite);
+                            //changeFavorite(note, !note.favorite);
+                            updateNote(note: note, isFavorite: !note.favorite);
                           },
                           icon: Icon(
                             Icons.star,
@@ -297,12 +603,7 @@ class _NotesScreenState extends State<NotesScreen> {
                             ? Text(note.category)
                             : null,
                         trailing: IconButton(
-                          onPressed: () => onTapMore(
-                            note,
-                            //context: context,
-                            //note: note,
-                            //path: path,
-                          ),
+                          onPressed: () => onTapMore(note),
                           icon: Icon(Icons.more_vert),
                         ),
                       );

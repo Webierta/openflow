@@ -67,6 +67,11 @@ extension NextcloudServiceShares on NextcloudService {
         path: path,
       );
       return responseShare.body.ocs.data.isNotEmpty;
+    } on DynamiteStatusCodeException catch (e) {
+      if (e.statusCode == 404) {
+        print('404: ARCHIVO NO ENCONTRADO');
+      }
+      return false;
     } catch (e) {
       print('Error checking if file is shared: $e');
       return false;

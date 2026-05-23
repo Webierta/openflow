@@ -75,6 +75,22 @@ class _SharedScreenState extends State<SharedScreen> {
     }
   }
 
+  Future<void> unShare(Share share) async {
+    var unShareResponse = await nextcloudService.unshareFile(share.id);
+    if (unShareResponse == true) {
+      initShared();
+    }
+    if (mounted) {
+      SnackbarManager.show(
+        context: context,
+        msg: unShareResponse == true
+            ? 'El archivo ha dejado de ser compartido'
+            : 'Error al dejar de compartir',
+        error: unShareResponse == false,
+      );
+    }
+  }
+
   void onTapMore(Share share) {
     showModalBottomSheet(
       showDragHandle: true,
@@ -155,36 +171,10 @@ class _SharedScreenState extends State<SharedScreen> {
                   ListTile(
                     leading: Icon(Icons.link_off),
                     title: Text('Dejar de compartir'),
-                    onTap: int.tryParse(share.id) == null
-                        ? () {
-                            Navigator.pop(contextBottomSheet);
-                            if (!context.mounted) return;
-                            SnackbarManager.show(
-                              context: context,
-                              msg: 'Error: proceso abortado',
-                              error: true,
-                            );
-                          }
-                        : () async {
-                            Navigator.pop(contextBottomSheet);
-                            var unShare = await nextcloudService.unshareFile(
-                              share.id,
-                            );
-                            if (!mounted) return;
-                            if (unShare == true) {
-                              SnackbarManager.show(
-                                context: context,
-                                msg: 'El archivo ha dejado de ser compartido',
-                              );
-                              initShared();
-                            } else {
-                              SnackbarManager.show(
-                                context: context,
-                                msg: 'Error al dejar de compartir',
-                                error: true,
-                              );
-                            }
-                          },
+                    onTap: () {
+                      Navigator.pop(contextBottomSheet);
+                      unShare(share);
+                    },
                   ),
                 ],
               ),

@@ -53,7 +53,9 @@ class _GalleryScreenState extends State<GalleryScreen> {
 
   Future<void> initStorage() async {
     //final storage = await StorageDataService.getDirGallery();
-    final storageDir = await storageServiceGeneral.getDirGallery();
+    final storageDir = await storageServiceGeneral.getDirGallery(
+      nameCuenta: widget.cuenta.name,
+    );
     if (storageDir != null && storageDir.isNotEmpty) {
       setState(() => dirGallery = storageDir);
     }
@@ -196,7 +198,10 @@ class _GalleryScreenState extends State<GalleryScreen> {
                     onPressed: () async {
                       setState(() => dirGallery = dir);
                       //await StorageDataService.saveDirGallery(dir);
-                      await storageServiceGeneral.saveDirGallery(dir);
+                      await storageServiceGeneral.saveDirGallery(
+                        nameCuenta: widget.cuenta.name,
+                        dir: dir,
+                      );
                     },
                     child: Text(dir),
                   ),

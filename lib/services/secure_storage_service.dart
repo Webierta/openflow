@@ -1,6 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:nextcloud/notes.dart';
 
 import '../models/cuenta_nextcloud.dart';
+//import '../utils/extension_note.dart';
 
 class SecureStorageService {
   final String scope;
@@ -25,6 +29,8 @@ class SecureStorageService {
 
   //String _k(String key) => '$scope::$key';
   String _scopedKey(String key) => '$scope::$key';
+
+  //String _scopedKey(String nameCuenta, String key) => '$scope::$nameCuenta:$key';
 
   // 1. Definición interna de los almacenes independientes
   final FlutterSecureStorage _storageCuentas = const FlutterSecureStorage(
@@ -88,24 +94,72 @@ class SecureStorageService {
   // 2.2.1 DIRECTORIO GALLERY
   static const String _dirGalleryKey = 'dir_gallery';
 
-  Future<void> saveDirGallery(String dir) async {
-    await _storageGeneral.write(key: _scopedKey(_dirGalleryKey), value: dir);
+  Future<void> saveDirGallery({
+    required String nameCuenta,
+    required String dir,
+  }) async {
+    await _storageGeneral.write(
+      key: _scopedKey('$nameCuenta:$_dirGalleryKey'),
+      value: dir,
+    );
   }
 
-  Future<String?> getDirGallery() async {
-    return await _storageGeneral.read(key: _scopedKey(_dirGalleryKey));
+  Future<String?> getDirGallery({required String nameCuenta}) async {
+    return await _storageGeneral.read(
+      key: _scopedKey('$nameCuenta:$_dirGalleryKey'),
+    );
   }
 
-  Future<bool> isDirGallery() async {
-    final dir = await getDirGallery();
+  Future<bool> isDirGallery({required String nameCuenta}) async {
+    final dir = await getDirGallery(nameCuenta: nameCuenta);
     return dir != null && dir.isNotEmpty;
   }
 
-  Future<void> deleteDirGallery() async {
-    await _storageGeneral.delete(key: _scopedKey(_dirGalleryKey));
+  Future<void> deleteDirGallery({required String nameCuenta}) async {
+    await _storageGeneral.delete(
+      key: _scopedKey('$nameCuenta:$_dirGalleryKey'),
+    );
   }
 
-  // 2.2.2 Métodos generales para este almacén
+  // 2.2.2 NOTES SETTINGS
+  static const String _notesSettingsKey = 'notes_settings';
+
+  Map<String, dynamic> toMap(Settings settings) => <String, dynamic>{
+    'notesPath': settings.notesPath,
+    'fileSuffix': settings.fileSuffix,
+    'noteMode': settings.noteMode.name,
+  };
+
+  Future<void> saveNotesSettings({
+    required String nameCuenta,
+    required Settings settings,
+  }) async {
+    await _storageGeneral.write(
+      key: _scopedKey('$nameCuenta:$_notesSettingsKey'),
+      value: json.encode(toMap(settings)),
+    );
+  }
+
+  Future<String?> getNotesSettings({required String nameCuenta}) async {
+    String? settings = await _storageGeneral.read(
+      key: _scopedKey('$nameCuenta:$_notesSettingsKey'),
+    );
+    if (settings != null) return settings;
+    return null;
+  }
+
+  /*Future<bool> isNotesSettings({required String nameCuenta}) async {
+    final settings = await getNotesSettings(nameCuenta: nameCuenta);
+    return settings != null && settings.isNotEmpty;
+  }
+
+  Future<void> deleteNotesSettings({required String nameCuenta}) async {
+    await _storageGeneral.delete(
+      key: _scopedKey('$nameCuenta:$_notesSettingsKey'),
+    );
+  }*/
+
+  // 2.2.3 Métodos generales para este almacén
 
   Future<Map<String, String>> readAllGeneral() async {
     //return await _storageGeneral.readAll();
@@ -126,3 +180,20 @@ class SecureStorageService {
     }
   }
 }
+
+/*extension on Settings {
+  static Map<String, dynamic> toMap(Settings settings) => <String, dynamic>{
+    'notesPath': settings.notesPath,
+    'fileSuffix': settings.fileSuffix,
+    'noteMode': settings.noteMode.name,
+  };
+
+  String serialize(Settings settings) => json.encode(toMap(settings));
+
+  //Future<Settings?> deserialize(String settings) {}
+
+  Settings deserialize(String json) => Settings.fromDataJson(jsonDecode(json));
+
+  //static MyUserModel deserialize(String json) =>
+  //    MyUserModel.fromJson(jsonDecode(json));
+}*/

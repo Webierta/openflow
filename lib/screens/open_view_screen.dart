@@ -1,18 +1,21 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:markdown_widget/markdown_widget.dart';
 import 'package:nextcloud/files_sharing.dart';
 import 'package:nextcloud/notes.dart';
 import 'package:nextcloud/webdav.dart';
+import 'package:openflow/screens/shared_screen.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
 
 import '../models/cuenta_nextcloud.dart';
 import '../services/nextcloud_service.dart';
+import '../services/secure_storage_service.dart';
 import '../theme/styles_app.dart';
+import '../utils/extension_note.dart';
 import '../utils/extension_share.dart';
 import '../utils/format_bytes.dart';
 import '../utils/format_dates.dart';
@@ -30,6 +33,7 @@ class OpenViewScreen<T> extends StatefulWidget {
 
 class _OpenViewScreenState extends State<OpenViewScreen> {
   late NextcloudService nextcloudService;
+  final storageServiceGeneral = SecureStorageService('general');
   bool loading = false;
   String? itemName;
   String? itemType;
@@ -63,17 +67,16 @@ class _OpenViewScreenState extends State<OpenViewScreen> {
       setState(() {
         itemName = note.title;
         txtContent = note.content;
+        bytesFile = utf8.encode(txtContent!);
       });
     }
-    print(itemName);
-    print(itemType);
   }
 
   Future<void> readBytes() async {
     String? path;
     if (widget.item is WebDavFile) {
-      final webDabFile = (widget.item as WebDavFile);
-      path = webDabFile.path.parent!.path + webDabFile.name;
+      final webDavFile = (widget.item as WebDavFile);
+      path = webDavFile.path.parent!.path + webDavFile.name;
     } else if (widget.item is Share) {
       final share = (widget.item as Share);
       path = share.path;
@@ -208,25 +211,14 @@ class _OpenViewScreenState extends State<OpenViewScreen> {
   }
 
   Future<void> downloadFile() async {
-    //String path = item.pathFile(currentPath: currentPath);
-    /*String path = item.path.parent!.path + item.name;
-    final responseBytes = await nextcloudService.readFileBytes(path);
-    if (responseBytes == null) {
-      showError(msg: 'Error obteniendo archivo');
-      return;
-    }*/
     if (itemName == null) {
-      print('SIN NOMBRE');
+      showError(msg: 'Error de acceso al nombre del archivo');
       return;
     }
     if (bytesFile == null) {
-      if (txtContent == null) {
-        print('SIN CONTENIDO');
-        return;
-      }
-      bytesFile = utf8.encode(txtContent!);
+      showError(msg: 'Error de lectura del archivo');
+      return;
     }
-
     final Directory? downloadsDir = await getDownloadsDirectory();
     if (downloadsDir == null) {
       showError(msg: 'Error de acceso a la carpeta de descargas');
@@ -243,6 +235,95 @@ class _OpenViewScreenState extends State<OpenViewScreen> {
       }
     } catch (e) {
       showError();
+    }
+  }
+
+  Future<void> unShareItem() async {
+    if (widget.item is Share) {
+      final share = (widget.item as Share);
+      var unShareResponse = await nextcloudService.unshareFile(share.id);
+      if (unShareResponse == true && mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (context) => SharedScreen(cuenta: widget.cuenta),
+          ),
+        );
+        SnackbarManager.show(
+          context: context,
+          msg: unShareResponse == true
+              ? 'El archivo ha dejado de estar compartido'
+              : 'Error al dejar de compartir',
+          error: unShareResponse == false,
+        );
+      }
+    }
+  }
+
+  Future<void> sharePath(String path) async {
+    final responseShare = await nextcloudService.shareFile(path: path);
+    if (responseShare.$1 == true) {
+      await Clipboard.setData(ClipboardData(text: responseShare.$2));
+      //initNotes();
+      //setState(() {});
+    }
+    if (!mounted) return;
+    SnackbarManager.show(
+      context: context,
+      msg: responseShare.$1 == true
+          ? 'Shared link copied to clipboard'
+          : 'Error al compartir.',
+      error: !responseShare.$1,
+    );
+  }
+
+  Future<void> shareItem() async {
+    if (widget.item is Note) {
+      final note = (widget.item as Note);
+      Settings? settingsNote;
+      try {
+        final String? settingsStore = await storageServiceGeneral
+            .getNotesSettings(nameCuenta: widget.cuenta.name);
+        if (settingsStore != null) {
+          settingsNote = Settings.fromJson(jsonDecode(settingsStore));
+        } else {
+          final responseSettings = await nextcloudService.client.notes
+              .getSettings();
+          settingsNote = responseSettings.body;
+        }
+        String path = note.getPath(settings: settingsNote);
+        final isShare = await nextcloudService.isFileShared(path);
+        if (isShare == true) {
+          if (!mounted) return;
+          SnackbarManager.show(
+            context: context,
+            msg: 'Nada que hacer: Esta nota ya está compartida.',
+            error: true,
+          );
+        } else {
+          sharePath(path);
+        }
+      } catch (e) {
+        if (!mounted) return;
+        SnackbarManager.show(
+          context: context,
+          msg: 'Error al compartir. Comprueba la extensión del archivo.',
+          error: true,
+        );
+      }
+    } else if (widget.item is WebDavFile) {
+      final webDavFile = (widget.item as WebDavFile);
+      String path = webDavFile.path.parent!.path + webDavFile.name;
+      final isShare = await nextcloudService.isFileShared(path);
+      if (isShare == true) {
+        if (!mounted) return;
+        SnackbarManager.show(
+          context: context,
+          msg: 'Nada que hacer: este archivo ya está compartido.',
+          error: true,
+        );
+      } else {
+        sharePath(path);
+      }
     }
   }
 
@@ -364,21 +445,16 @@ class _OpenViewScreenState extends State<OpenViewScreen> {
                 onPressed: () => showInfo(context),
                 icon: const Icon(Icons.info),
               ),
-              IconButton(
-                onPressed: downloadFile,
-                /*onPressed: () => downloadFile(
-                  context: context,
-                  cuenta: widget.cuenta,
-                  file: widget.file,
-                ),*/
-                icon: Icon(Icons.download),
-              ),
-              IconButton(
-                onPressed: () {
-                  //shareFile();
-                },
-                icon: Icon(Icons.share),
-              ),
+              IconButton(onPressed: downloadFile, icon: Icon(Icons.download)),
+              widget.item is Share
+                  ? IconButton(
+                      onPressed: unShareItem,
+                      icon: Icon(Icons.link_off),
+                    )
+                  : IconButton(
+                      onPressed: shareItem,
+                      icon: Icon(Icons.add_link),
+                    ),
             ],
           ),
         ),
