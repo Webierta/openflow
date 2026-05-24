@@ -7,7 +7,9 @@ import 'package:markdown_widget/markdown_widget.dart';
 import 'package:nextcloud/files_sharing.dart';
 import 'package:nextcloud/notes.dart';
 import 'package:nextcloud/webdav.dart';
+import 'package:openflow/screens/notes_screen.dart';
 import 'package:openflow/screens/shared_screen.dart';
+import 'package:openflow/utils/extension_webdavfile.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
 
@@ -39,12 +41,22 @@ class _OpenViewScreenState extends State<OpenViewScreen> {
   String? itemType;
   Uint8List? bytesFile;
   String? txtContent;
+  Note? nota;
+
+  TextEditingController controllerNote = TextEditingController();
+  bool modeEdit = false;
 
   @override
   void initState() {
     nextcloudService = NextcloudService(cuenta: widget.cuenta);
     setInit();
     super.initState();
+  }
+
+  @override
+  void dispose() {
+    controllerNote.dispose();
+    super.dispose();
   }
 
   void setInit() {
@@ -63,11 +75,12 @@ class _OpenViewScreenState extends State<OpenViewScreen> {
       });
       readBytes();
     } else if (widget.item is Note) {
-      final note = (widget.item as Note);
+      final note = nota ?? (widget.item as Note);
       setState(() {
         itemName = note.title;
         txtContent = note.content;
-        bytesFile = utf8.encode(txtContent!);
+        bytesFile = utf8.encode(note.content);
+        controllerNote.text = note.content;
       });
     }
   }
@@ -103,13 +116,13 @@ class _OpenViewScreenState extends State<OpenViewScreen> {
 
   List<Widget> buildDetallesWebDavFile() {
     final webDavFile = (widget.item as WebDavFile);
-    String ruta = 'Home';
+    /*String ruta = 'Home';
     var dir = webDavFile.path.parent?.path;
     if (dir == null || dir.isEmpty) {
       ruta = 'Home';
     } else if (dir.isNotEmpty) {
       ruta = 'Home/${dir.substring(0, dir.length - 1)}';
-    }
+    }*/
     return [
       Center(child: Text(webDavFile.name, style: TextStyle(fontSize: 22))),
       ListTile(
@@ -126,7 +139,7 @@ class _OpenViewScreenState extends State<OpenViewScreen> {
           title: Text(FormatDates.dateToString(date: webDavFile.lastModified!)),
           subtitle: Text('Last Modified'),
         ),
-      ListTile(title: Text(ruta), subtitle: Text('Path')),
+      ListTile(title: Text(webDavFile.ruta()), subtitle: Text('Path')),
     ];
   }
 
@@ -157,7 +170,7 @@ class _OpenViewScreenState extends State<OpenViewScreen> {
   }
 
   List<Widget> buildDetallesNote() {
-    final note = (widget.item as Note);
+    final note = nota ?? (widget.item as Note);
     String categoria = note.category;
     if (categoria.isEmpty) {
       categoria = 'Ninguna';
@@ -278,7 +291,7 @@ class _OpenViewScreenState extends State<OpenViewScreen> {
 
   Future<void> shareItem() async {
     if (widget.item is Note) {
-      final note = (widget.item as Note);
+      final note = nota ?? (widget.item as Note);
       Settings? settingsNote;
       try {
         final String? settingsStore = await storageServiceGeneral
@@ -332,10 +345,25 @@ class _OpenViewScreenState extends State<OpenViewScreen> {
       return Center(child: CircularProgressIndicator());
     }
     if (widget.item is Note) {
-      final note = (widget.item as Note);
+      final note = nota ?? (widget.item as Note);
+      if (modeEdit == true) {
+        return SingleChildScrollView(
+          padding: .all(40),
+          child: TextField(
+            controller: controllerNote,
+            //readOnly: note.id == null,
+            maxLines: null,
+            decoration: InputDecoration.collapsed(
+              hintText: '',
+              border: InputBorder.none,
+            ),
+          ),
+        );
+      }
       return MarkdownWidget(
         data: note.content,
         padding: .all(40),
+        selectable: true,
         config: MarkdownConfig(
           configs: [
             PreConfig.darkConfig,
@@ -351,14 +379,6 @@ class _OpenViewScreenState extends State<OpenViewScreen> {
           ],
         ),
       );
-      /*try {
-        return SingleChildScrollView(
-          padding: .all(40),
-          child: Text(note.content),
-        );
-      } catch (e) {
-        return Center(child: Text('Error de lectura de archivo'));
-      }*/
     }
     if (itemType == null) {
       return Center(child: Text('Formato de archivo no encontrado'));
@@ -433,7 +453,68 @@ class _OpenViewScreenState extends State<OpenViewScreen> {
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(title: Text(itemName ?? 'N/D')),
+        appBar: AppBar(
+          leading: IconButton(
+            onPressed: () {
+              if (widget.item is Note && nota != null) {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (context) => NotesScreen(cuenta: widget.cuenta),
+                  ),
+                );
+              } else {
+                Navigator.of(context).pop();
+              }
+            },
+            icon: Icon(Icons.arrow_back),
+          ),
+          title: Text(itemName ?? 'N/D'),
+          actions: [
+            if (widget.item is Note && modeEdit == true)
+              IconButton(
+                onPressed: () async {
+                  setState(() => loading = true);
+
+                  final updateNote = await nextcloudService.updateNote(
+                    note: (widget.item as Note),
+                    content: controllerNote.text,
+                  );
+                  if (updateNote == true) {
+                    final notaNew = await nextcloudService.getNota(
+                      id: (widget.item as Note).id,
+                    );
+                    if (notaNew != null) {
+                      setState(() {
+                        nota = notaNew;
+                      });
+                      //ACTUALIZAR NOTA A NUEVA NOTA
+                    }
+                  }
+                  setState(() {
+                    loading = false;
+                    modeEdit = false;
+                  });
+                  if (!context.mounted) return;
+                  //Navigator.of(context).pop();
+                  SnackbarManager.show(
+                    context: context,
+                    msg: updateNote == true
+                        ? 'Note changed successfully!'
+                        : 'Failed to update note',
+                    error: updateNote != true,
+                  );
+                },
+                icon: Icon(Icons.save, color: Colors.white),
+              ),
+            if ((widget.item is Note) && modeEdit == false)
+              IconButton(
+                onPressed: () {
+                  setState(() => modeEdit = true);
+                },
+                icon: Icon(Icons.edit, color: Colors.white),
+              ),
+          ],
+        ),
         body: buildBody(),
         bottomNavigationBar: BottomAppBar(
           height: 45,

@@ -321,6 +321,7 @@ class _FilesScreenState extends State<FilesScreen> {
                             onDeleted: () {
                               if (searchController.text.isNotEmpty) {
                                 setState(() {
+                                  //isLoading = true;
                                   searchController.clear();
                                 });
                               }
@@ -330,6 +331,9 @@ class _FilesScreenState extends State<FilesScreen> {
                                 ).removeCurrentSnackBar();
                                 Navigator.of(context).pop();
                               }
+                              /*setState(() {
+                                isLoading = false;
+                              });*/
                             },
                           ),
                   ),
@@ -491,7 +495,9 @@ class _FilesScreenState extends State<FilesScreen> {
                                     path: '$currentPath/${item.path.name}',
                                   ),*/
                                   future: nextcloudService.getThumbnail(
-                                    path: '$currentPath/${item.path.name}',
+                                    //path: '$currentPath/${item.path.name}',
+                                    path:
+                                        '${item.path.parent!.path}/${item.name}',
                                   ),
                                   builder: (context, snapshot) {
                                     if (snapshot.hasData) {
@@ -520,9 +526,7 @@ class _FilesScreenState extends State<FilesScreen> {
                                   item.getDirName(widget.cuenta.userName) !=
                                       null)*/
                               if (depth == WebDavDepth.infinity)
-                                // && item.getDirName(widget.cuenta.userName) != null)
-                                //Text('in ${item.getDirName(widget.cuenta.userName)}'),
-                                Text('in ${item.path.path}'),
+                                Text(item.ruta()),
                               if (item.lastModified != null)
                                 //Text(FormatDates.show(item.lastModified!)),
                                 Text(

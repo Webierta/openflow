@@ -11,6 +11,38 @@ extension NextcloudServiceNotes on NextcloudService {
     }
   }
 
+  Future<Note?>? getNota({required int id}) async {
+    try {
+      final responseNote = await client.notes.getNote(id: id);
+      return responseNote.body;
+    } catch (e) {
+      print(e);
+      return null;
+    }
+  }
+
+  Future<Note?>? addNote({required String title}) async {
+    try {
+      final responseAdd = await client.notes.createNote(
+        title: title,
+        content: '# Hola\n\nNota creada con Openflow',
+      );
+      if (responseAdd.statusCode == 200) {
+        return responseAdd.body;
+      } else {
+        throw DynamiteStatusCodeException;
+      }
+    } on DynamiteStatusCodeException catch (r) {
+      print(r.statusCode);
+      return null;
+    } on DynamiteApiException catch (_) {
+      return null;
+    } catch (e) {
+      print(e);
+      return null;
+    }
+  }
+
   int boolToInt(bool a) => a ? 1 : 0;
 
   Future<bool> updateNote({

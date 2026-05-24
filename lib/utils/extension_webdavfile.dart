@@ -21,4 +21,13 @@ extension ExtensionWebdavfile on WebDavFile {
         ? pathName ?? pathCurrent(currentPath)
         : pathNameBar ?? pathCurrent(currentPath);
   }
+
+  String ruta() {
+    String ruta = 'Home';
+    var dir = path.parent?.path;
+    if (dir != null && dir.isNotEmpty) {
+      ruta = 'Home/${dir.substring(0, dir.length - 1)}';
+    }
+    return ruta;
+  }
 }

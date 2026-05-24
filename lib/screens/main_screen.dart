@@ -9,8 +9,10 @@ import '../providers/cuentas_provider.dart';
 import '../services/nextcloud_service.dart';
 import '../theme/styles_app.dart';
 import '../widgets/drawer_app.dart';
+import '../widgets/open_dialog.dart';
 import '../widgets/snackbar_manager.dart';
 import 'add_cuenta_screen.dart';
+import 'files_screen.dart';
 
 class MainScreen extends ConsumerStatefulWidget {
   final CuentaNextcloud? cuentaSelect;
@@ -199,7 +201,24 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     }
   }
 
-  void searchGlobal() async {}
+  Future<void> searchGlobal() async {
+    final search = await OpenDialog.inputName(
+      context: context,
+      title: 'Search Global',
+      icon: Icons.search,
+      controller: searchController,
+    );
+    searchController.clear();
+    if (search != null && search.trim().isNotEmpty && mounted) {
+      ScaffoldMessenger.of(context).removeCurrentSnackBar();
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (context) =>
+              FilesScreen(cuenta: cuentaSelect!, inputSearch: search),
+        ),
+      );
+    }
+  }
 
   void onTapDestino({
     required BuildContext context,

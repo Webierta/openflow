@@ -350,7 +350,32 @@ class _NotesScreenState extends State<NotesScreen> {
     }
   }
 
-  Future<void> newNote() async {}
+  Future<void> newNote() async {
+    var noteName = await OpenDialog.inputName(
+      context: context,
+      title: 'Input note name',
+      icon: Icons.note_add,
+      controller: inputController,
+    );
+    if (noteName == null) return;
+    inputController.clear();
+    final responseNewNote = await nextcloudService.addNote(title: noteName);
+    if (responseNewNote != null) {
+      if (mounted) {
+        SnackbarManager.show(context: context, msg: 'Add note successfully!');
+      }
+      initNotes();
+      onTapNote(responseNewNote);
+    } else {
+      if (mounted) {
+        SnackbarManager.show(
+          context: context,
+          msg: 'Add note failed',
+          error: true,
+        );
+      }
+    }
+  }
 
   Widget filterCategory() {
     return Expanded(
