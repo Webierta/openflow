@@ -7,9 +7,6 @@ import 'package:markdown_widget/markdown_widget.dart';
 import 'package:nextcloud/files_sharing.dart';
 import 'package:nextcloud/notes.dart';
 import 'package:nextcloud/webdav.dart';
-import 'package:openflow/screens/notes_screen.dart';
-import 'package:openflow/screens/shared_screen.dart';
-import 'package:openflow/utils/extension_webdavfile.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
 
@@ -19,9 +16,12 @@ import '../services/secure_storage_service.dart';
 import '../theme/styles_app.dart';
 import '../utils/extension_note.dart';
 import '../utils/extension_share.dart';
+import '../utils/extension_webdavfile.dart';
 import '../utils/format_bytes.dart';
 import '../utils/format_dates.dart';
 import '../widgets/snackbar_manager.dart';
+import 'notes_screen.dart';
+import 'shared_screen.dart';
 
 class OpenViewScreen<T> extends StatefulWidget {
   final CuentaNextcloud cuenta;
