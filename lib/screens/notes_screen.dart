@@ -292,14 +292,72 @@ class _NotesScreenState extends State<NotesScreen> {
                     title: Text('Change Category'),
                     onTap: () async {
                       Navigator.pop(contextBottomSheet);
-                      var newCategory = await OpenDialog.inputName(
+                      String? newCategory = await showDialog<String>(
                         context: context,
-                        title: 'Input new category name for this note',
-                        icon: Icons.edit,
-                        controller: inputController,
+                        builder: (BuildContext context) {
+                          inputController.text = note.category;
+                          var width = MediaQuery.of(context).size.width;
+                          return SimpleDialog(
+                            contentPadding: .symmetric(horizontal: 24),
+                            //insetPadding: EdgeInsets.zero,
+                            //contentPadding: EdgeInsets.zero,
+                            //clipBehavior: Clip.antiAliasWithSaveLayer,
+                            title: Row(
+                              mainAxisAlignment: .spaceBetween,
+                              children: [
+                                const Text('New category'),
+                                IconButton(
+                                  tooltip: 'Salir sin guardar',
+                                  onPressed: () {
+                                    Navigator.pop(context, null);
+                                  },
+                                  icon: CircleAvatar(child: Icon(Icons.close)),
+                                ),
+                              ],
+                            ),
+                            children: [
+                              SizedBox(height: 14, width: width),
+                              Card(
+                                child: ListTile(
+                                  leading: Icon(Icons.category, size: 42),
+                                  title: TextField(controller: inputController),
+                                  subtitle: Text('Categoría seleccionada'),
+                                  trailing: IconButton(
+                                    tooltip: 'Guardar',
+                                    onPressed: () {
+                                      Navigator.pop(
+                                        context,
+                                        inputController.text,
+                                      );
+                                    },
+                                    icon: Icon(
+                                      Icons.save,
+                                      size: 42,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.error,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              for (final cat in categorias)
+                                SimpleDialogOption(
+                                  onPressed: () {
+                                    inputController.text = cat;
+                                  },
+                                  child: cat.isEmpty
+                                      ? Text('Ninguna')
+                                      : Text(cat),
+                                ),
+                            ],
+                          );
+                        },
                       );
-                      if (newCategory == null) return;
-                      updateNote(note: note, category: newCategory);
+                      inputController.clear();
+                      if (newCategory != null && note.category != newCategory) {
+                        await updateNote(note: note, category: newCategory);
+                      }
                     },
                   ),
                   Divider(),
@@ -483,6 +541,10 @@ class _NotesScreenState extends State<NotesScreen> {
                   'algunas funciones pueden no estar disponibles.',
                 ),
               ),
+              ListTile(
+                title: Text(settings.noteMode.name),
+                subtitle: Text('Note mode.'),
+              ),
             ],
           ),
           actions: <Widget>[
@@ -525,7 +587,8 @@ class _NotesScreenState extends State<NotesScreen> {
                 ? Image.memory(widget.cuenta.avatar!, height: 30, width: 30)
                 : Icon(Icons.person_off, size: 30, color: Colors.grey),
           ),
-          title: Text('Notes: ${notesApi.length}'),
+          title: const Text('Notes'),
+          //title: Text('Notes: ${notesApi.length}'),
           actions: [
             IconButton(
               tooltip: 'Sort by name',
@@ -549,8 +612,20 @@ class _NotesScreenState extends State<NotesScreen> {
               icon: Icon(Icons.date_range, size: 32, color: Colors.white),
             ),
             IconButton(
+              onPressed: () => setState(() => isGridView = !isGridView),
+              icon: Icon(
+                isGridView ? Icons.list : Icons.grid_view,
+                size: 32,
+                color: Colors.white,
+              ),
+            ),
+            IconButton(
               onPressed: viewSettings,
-              icon: Icon(Icons.settings, size: 32, color: Colors.white),
+              icon: Icon(
+                Icons.settings_applications,
+                size: 32,
+                color: Colors.white,
+              ),
             ),
           ],
           bottom: isLoading == false
@@ -594,6 +669,72 @@ class _NotesScreenState extends State<NotesScreen> {
             ? Center(child: Text('Sin notas'))
             : LayoutBuilder(
                 builder: (context, constraints) {
+                  if (isGridView) {
+                    int columns = (constraints.maxWidth / 200).floor();
+                    return GridView.builder(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: columns, // Number of columns
+                        crossAxisSpacing: 4, // Space between columns
+                        mainAxisSpacing: 4, // Space between rows
+                      ),
+                      padding: .all(10),
+                      itemCount: notes.length,
+                      itemBuilder: (context, index) {
+                        var note = notes[index];
+                        return Card(
+                          child: InkWell(
+                            onTap: () => onTapNote(note),
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment: .spaceBetween,
+                                  children: [
+                                    IconButton(
+                                      onPressed: () {
+                                        updateNote(
+                                          note: note,
+                                          isFavorite: !note.favorite,
+                                        );
+                                      },
+                                      icon: Icon(
+                                        Icons.star,
+                                        color: note.favorite == true
+                                            ? Colors.yellow
+                                            : Colors.grey,
+                                        size: 42,
+                                      ),
+                                    ),
+                                    IconButton(
+                                      onPressed: () => onTapMore(note),
+                                      icon: Icon(Icons.more_vert),
+                                    ),
+                                  ],
+                                ),
+                                Spacer(flex: 1),
+                                Text(note.title),
+                                Spacer(flex: 2),
+                                if (note.category.isNotEmpty)
+                                  Container(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.tertiaryContainer,
+                                    width: double.infinity,
+                                    padding: EdgeInsets.symmetric(vertical: 6),
+                                    child: Text(
+                                      note.category,
+                                      textAlign: TextAlign.center,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.fade,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  }
+
                   return ListView.separated(
                     shrinkWrap: true,
                     padding: .fromLTRB(4, 4, 4, 60),
