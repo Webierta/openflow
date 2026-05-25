@@ -1,17 +1,23 @@
-# openflow
+# Openflow
 
-Nextcloud Open Client
+## Nextcloud Open Client
 
-## Getting Started
+![Logo](https://github.com/Webierta/openflow/blob/main/assets/images/logo.png?raw=true)
 
-This project is a starting point for a Flutter application.
+### Cloud workflow: Up, down and share
 
-A few resources to get you started if this is your first Flutter project:
+**Cliente multicuenta de Nextcloud para Linux y Android.**
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+Software libre de código abierto.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Seguridad y privacidad: contraseña encriptada que se almacena en local.
+
+## Archivos (Files)
+
+## Compartidos (Shares)
+
+## Notas (Notes)
+
+## Imágenes (Gallery)
+
+## Búsqueda global
