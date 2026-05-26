@@ -15,6 +15,7 @@ import '../services/secure_storage_service.dart';
 import '../theme/styles_app.dart';
 import '../utils/format_dates.dart';
 import '../widgets/bottom_bar_app.dart';
+import '../widgets/open_dialog.dart';
 import '../widgets/snackbar_manager.dart';
 import 'open_view_screen.dart';
 
@@ -42,17 +43,13 @@ class _GalleryScreenState extends State<GalleryScreen> {
       StreamController<(WebDavFile, Uint8List)>();
   late StreamSubscription<(WebDavFile, Uint8List)> subscription;
 
-  //final List<Uint8List> imagenes = [];
-  //final List<WebDavFile> webDavFiles = [];
   Map<WebDavFile, Uint8List> galleryMap = {};
 
   bool uploading = false;
+  TextEditingController searchController = TextEditingController();
   double progress = 0;
 
-  //bool isLoading = false;
-
   Future<void> initStorage() async {
-    //final storage = await StorageDataService.getDirGallery();
     final storageDir = await storageServiceGeneral.getDirGallery(
       nameCuenta: widget.cuenta.name,
     );
@@ -73,6 +70,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
   void dispose() {
     subscription.cancel();
     streamController.close();
+    searchController.dispose();
     super.dispose();
   }
 
@@ -100,10 +98,10 @@ class _GalleryScreenState extends State<GalleryScreen> {
         });
       },
       onError: (error) {
-        print('Error: $error');
+        //print('Error: $error');
       },
       onDone: () {
-        print('Stream closed: ${streamController.isClosed}');
+        //print('Stream closed: ${streamController.isClosed}');
       },
     );
   }
@@ -215,6 +213,16 @@ class _GalleryScreenState extends State<GalleryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Map<WebDavFile, Uint8List> searchImages = galleryMap;
+    if (searchController.text.isNotEmpty) {
+      searchImages = Map.fromEntries(
+        galleryMap.entries.where(
+          (e) => e.key.name.toLowerCase().contains(
+            searchController.text.toLowerCase(),
+          ),
+        ),
+      );
+    }
     return Container(
       decoration: StylesApp.backgroundScreen(context),
       child: Scaffold(
@@ -232,12 +240,30 @@ class _GalleryScreenState extends State<GalleryScreen> {
           actions: [
             if (streamController.isClosed) ...[
               IconButton(
+                tooltip: 'Search image by name',
+                onPressed: () async {
+                  searchController.clear();
+                  final search = await OpenDialog.inputName(
+                    context: context,
+                    title: 'Search in this folder',
+                    icon: Icons.search,
+                    controller: searchController,
+                  );
+                  if (search != null &&
+                      search.trim().isNotEmpty &&
+                      context.mounted) {
+                    setState(() => searchController.text = search);
+                  }
+                },
+                icon: Icon(Icons.search, size: 32, color: Colors.white),
+              ),
+              IconButton(
                 tooltip: 'Sort by name',
                 onPressed: () {
                   setState(() {
                     //imagesPreview.sort((a, b) => a.name.compareTo(b.name));
-                    galleryMap = Map.fromEntries(
-                      galleryMap.entries.toList()
+                    searchImages = Map.fromEntries(
+                      searchImages.entries.toList()
                         ..sort((e1, e2) => e1.key.name.compareTo(e2.key.name)),
                     );
                   });
@@ -248,8 +274,8 @@ class _GalleryScreenState extends State<GalleryScreen> {
                 tooltip: 'Sort by date',
                 onPressed: () {
                   setState(() {
-                    galleryMap = Map.fromEntries(
-                      galleryMap.entries.toList()..sort((e1, e2) {
+                    searchImages = Map.fromEntries(
+                      searchImages.entries.toList()..sort((e1, e2) {
                         final aDate = FormatDates.dateToString(
                           date: e1.key.lastModified!,
                         );
@@ -269,7 +295,52 @@ class _GalleryScreenState extends State<GalleryScreen> {
               icon: Icon(Icons.folder, size: 32, color: Colors.white),
             ),
           ],
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(kToolbarHeight),
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 10),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            maxRadius: 16,
+                            child: Text('${galleryMap.entries.length}'),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            widget.pathGallery == '/'
+                                ? 'All'
+                                : 'Home/${widget.pathGallery}',
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (searchController.text.isNotEmpty)
+                      FittedBox(
+                        child: InputChip(
+                          avatar: CircleAvatar(
+                            child: Text('${searchImages.entries.length}'),
+                          ),
+                          label: Text(searchController.text),
+                          onDeleted: () {
+                            setState(() {
+                              searchController.clear();
+                            });
+                          },
+                        ),
+                      ),
+                    const Spacer(),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
+
         bottomNavigationBar: BottomBarApp(
           cuenta: widget.cuenta,
           destino: Destino.gallery,
@@ -279,14 +350,18 @@ class _GalleryScreenState extends State<GalleryScreen> {
         ),
         body: !streamController.isPaused && galleryMap.isEmpty
             ? Center(child: CircularProgressIndicator())
-            : streamController.isClosed && galleryMap.isEmpty
+            : streamController.isClosed && searchImages.isEmpty
             ? Center(
                 child: Column(
                   mainAxisAlignment: .center,
                   children: [
                     Icon(Icons.image_not_supported_outlined, size: 84),
                     const SizedBox(height: 42),
-                    Text('No se han encontrado imágenes en el servidor'),
+                    Text(
+                      searchController.text.isEmpty
+                          ? 'No se han encontrado imágenes en el servidor'
+                          : 'Sin resultados para ${searchController.text}',
+                    ),
                   ],
                 ),
               )
@@ -312,6 +387,15 @@ class _GalleryScreenState extends State<GalleryScreen> {
                         );
                       }
                       int columns = (constraints.maxWidth / 150).floor();
+
+                      //Map<WebDavFile, Uint8List> searchImages = galleryMap;
+                      /*if (searchController.text.isNotEmpty) {
+                        searchImages = Map.fromEntries(
+                          galleryMap.entries.where(
+                            (e) => e.key.name.contains(searchController.text),
+                          ),
+                        );
+                      }*/
                       return GridView.builder(
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: columns,
@@ -319,10 +403,10 @@ class _GalleryScreenState extends State<GalleryScreen> {
                           crossAxisSpacing: 8.0,
                         ),
                         padding: EdgeInsets.all(12.0),
-                        itemCount: galleryMap.length,
+                        itemCount: searchImages.length,
                         itemBuilder: (context, index) {
-                          final webDavFile = galleryMap.keys.elementAt(index);
-                          final image = galleryMap.values.elementAt(index);
+                          final webDavFile = searchImages.keys.elementAt(index);
+                          final image = searchImages.values.elementAt(index);
                           //var image = galleryMap.values[index];
                           //var image = imagenes[index];
                           //var webDavFile = webDavFiles[index];

@@ -101,7 +101,7 @@ class _OpenViewScreenState extends State<OpenViewScreen> {
         setState(() => bytesFile = responseBytes);
       }
     } catch (e) {
-      print(e);
+      //print(e);
     } finally {
       setState(() => loading = false);
     }

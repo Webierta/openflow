@@ -24,11 +24,7 @@ class MainApp extends ConsumerStatefulWidget {
 
 class _MainAppState extends ConsumerState<MainApp> {
   Future<void> getStorage() async {
-    //await StorageCuentas.clearStorageCuentas();
-    //final storage = await StorageCuentas.getCuentas();
     final storageServiceCuentas = SecureStorageService('cuentas');
-    //storageService.clearStorageCuentas();
-    //storageService.clearStorageGeneral();
     final storageCuentas = await storageServiceCuentas.getAllCuentas();
     List<String> cuentasName = [];
     storageCuentas.forEach((key, value) {

@@ -1,11 +1,28 @@
 part of 'nextcloud_service.dart';
 
-class CopyJob {
-  final String source;
-  final String destination;
-
-  CopyJob(this.source, this.destination);
-}
+/// API CLIENT WEBDAV AND FILES
+///
+/// webdav: getFiles (path, onlyDir, onlyImg, depth) => `List<WebDavFile?>?`
+///
+/// webdav: getGallery (path, depth) => Stream<(WebDavFile, Uint8List)>
+///
+/// files: getThumbnail (path, x?, y?) => Uint8List?
+///
+/// webdav: readFileBytes (path) => Uint8List?
+///
+/// webdav: createFolder (folderPath) => bool
+///
+/// webdav: createFolders (destinos, onProgress) => void
+///
+/// webdav: moveFile (oldPath, newPath, overwrite) => bool
+///
+/// webdav: copyFile (oldPath, newPath, overwrite) => bool
+///
+/// webdav: deleteFile (path) => bool
+///
+/// webdav: uploadFile (file, fileStat, path, onProgress) => bool
+///
+/// files: getFolderTree () => `BuiltList<FolderTree?>?`
 
 extension NextcloudServiceFiles on NextcloudService {
   Future<List<WebDavFile>?>? getFiles({
@@ -21,9 +38,6 @@ extension NextcloudServiceFiles on NextcloudService {
       if (listaItems.isNotEmpty) {
         listaItems.removeAt(0);
       }
-      //listaItems.first.size int?
-      //listaItems.first.lastModified DataTime?
-      //listaItems.first.path.name String
 
       final listaDir = listaItems.where((item) => item.isDirectory).toList();
       listaDir.sort(
@@ -47,7 +61,7 @@ extension NextcloudServiceFiles on NextcloudService {
       }
       return listaDir + listaFile;
     } catch (e) {
-      print(e);
+      //print(e);
       return null;
     }
   }
@@ -65,18 +79,12 @@ extension NextcloudServiceFiles on NextcloudService {
       }
       for (final webDavFile in webDavFiles) {
         if (webDavFile.isDirectory) {
-          //if (file.path == '/$rutaInicial' || file.path == '$rutaInicial/') continue;
-          /*if (webDavFile.path.name == '/$path' ||
-              webDavFile.path.name == '$path/')
-            continue;*/
           var rutaDir = '$path/${webDavFile.path.name}';
           rutaDir = rutaDir.startsWith('/') ? rutaDir.substring(1) : rutaDir;
           yield* getGallery(path: rutaDir);
-          //continue;
         } else if (webDavFile.mimeType != null &&
             webDavFile.mimeType!.startsWith('image/')) {
           var rutaFile = '${webDavFile.path.parent?.path}${webDavFile.name}';
-          //var rutaFile = webDavFile.path.name;
           final bytes = await readFileBytes(rutaFile);
           if (bytes != null) {
             yield (webDavFile, bytes);
@@ -84,7 +92,7 @@ extension NextcloudServiceFiles on NextcloudService {
         }
       }
     } catch (e) {
-      print(e);
+      //print(e);
     }
   }
 
@@ -99,9 +107,16 @@ extension NextcloudServiceFiles on NextcloudService {
         x: x ?? 64,
         y: y ?? 64,
       );
-      return responseThumbnail.body;
+      if (responseThumbnail.statusCode == 200) {
+        return responseThumbnail.body;
+      } else {
+        throw Error();
+      }
+    } on DynamiteApiException catch (_) {
+      //print(r.message);
+      return null;
     } catch (e) {
-      print(e);
+      //print(e);
       return null;
     }
   }
@@ -112,7 +127,7 @@ extension NextcloudServiceFiles on NextcloudService {
       final responseBytes = await client.webdav.get(uri);
       return responseBytes;
     } catch (e) {
-      print(e);
+      //print(e);
       return null;
     }
   }
@@ -126,9 +141,12 @@ extension NextcloudServiceFiles on NextcloudService {
       } else {
         throw Error();
       }
+    } on DynamiteStatusCodeException catch (r) {
+      // Ignoramos error 405 (ya existe), lanzamos el resto
+      if (r.statusCode != 405) rethrow;
+      return false;
     } catch (e) {
-      //if (e. statusCode != 405) rethrow;
-      print(e);
+      //print(e);
       return false;
     }
   }
@@ -151,8 +169,13 @@ extension NextcloudServiceFiles on NextcloudService {
             'Error al crear carpeta: ${responseCreate.statusCode}',
           );
         }
+      } on DynamiteStatusCodeException catch (r) {
+        if (r.statusCode == 405) {
+          done++;
+          onProgress?.call(done, destinos.length);
+        }
       } catch (e) {
-        print(e);
+        //debugPrint('❌ Error creando $destino: $e');
       }
     }
   }
@@ -176,7 +199,7 @@ extension NextcloudServiceFiles on NextcloudService {
         return false;
       }
     } catch (e) {
-      print(e);
+      //print(e);
       return false;
     }
   }
@@ -200,35 +223,8 @@ extension NextcloudServiceFiles on NextcloudService {
         return false;
       }
     } catch (e) {
-      print(e);
+      //print(e);
       return false;
-    }
-  }
-
-  Future<void> copyFolder({
-    required List<CopyJob> copyJobs,
-    void Function(int done, int total)? onProgress,
-    bool overwrite = false,
-  }) async {
-    int done = 0;
-    for (final job in copyJobs) {
-      var sourcePath = PathUri.parse(job.source);
-      var destinationPath = PathUri.parse(job.destination);
-      try {
-        final responseCopy = await client.webdav.copy(
-          sourcePath,
-          destinationPath,
-          overwrite: overwrite,
-        );
-        if (responseCopy.statusCode == 201 || responseCopy.statusCode == 204) {
-          done++;
-          onProgress?.call(done, copyJobs.length);
-        } else {
-          throw Exception('Error al crear carpeta: ${responseCopy.statusCode}');
-        }
-      } catch (e) {
-        print(e);
-      }
     }
   }
 
@@ -243,7 +239,7 @@ extension NextcloudServiceFiles on NextcloudService {
         return false;
       }
     } catch (e) {
-      print(e);
+      //print(e);
       return false;
     }
   }
@@ -262,19 +258,14 @@ extension NextcloudServiceFiles on NextcloudService {
         pathUri,
         onProgress: onProgress,
       );
-
       if (responseUpload.statusCode == 201) {
         return true;
       } else {
+        //print(responseUpload.statusCode);
         throw Error();
-        //throw DynamiteStatusCodeException();
-        return false;
       }
-      /*} on DynamiteStatusCodeException catch (r) {
-      print(r.statusCode);
-      return false;*/
     } catch (e) {
-      print(e);
+      //print(e);
       return false;
     }
   }

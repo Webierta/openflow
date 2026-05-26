@@ -35,170 +35,135 @@ class _DrawerAppState extends State<DrawerApp> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Drawer(
-        width: double.infinity,
-        child: Container(
-          decoration: StylesApp.backgroundScreen(context),
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              Stack(
+    return Drawer(
+      child: Container(
+        decoration: StylesApp.backgroundScreen(context),
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                primary: true,
+                scrollDirection: Axis.vertical,
                 children: [
-                  SizedBox(
-                    height: 260,
-                    child: DrawerHeader(
-                      decoration: BoxDecoration(
-                        border: BoxBorder.all(
-                          color: Colors.transparent,
-                          width: 0,
-                        ),
-                        color: .new(0x660082C9),
-                        image: DecorationImage(
-                          image: AssetImage(
-                            'assets/images/Nextcloud-logo-blue-small.png',
-                          ),
-                        ),
+                  Container(
+                    padding: .symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.onPrimary,
+                      image: DecorationImage(
+                        fit: BoxFit.cover,
+                        opacity: 0.15,
+                        image: AssetImage('assets/images/logo.png'),
                       ),
-                      child: Column(
-                        children: [
-                          const Text(
-                            'Openflow',
-                            //packageInfo.appName.,
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w200,
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Nextcloud Open Client',
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(color: Colors.white70),
+                        ),
+                        const Text(
+                          'OPENFLOW',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w100,
+                          ),
+                        ),
+                        const Text(
+                          'Cloud workflow: Up Down Share',
+                          style: TextStyle(
+                            fontStyle: FontStyle.italic,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w200,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const Row(
+                          mainAxisAlignment: .spaceAround,
+                          children: [
+                            Icon(
+                              Icons.file_copy_outlined,
+                              color: Colors.blueGrey,
                             ),
-                          ),
-                          //Icon(Icons.cloud_done, size: 42),
-                          const Text(
-                            'Nextcloud Open Client',
-                            style: TextStyle(fontSize: 16),
-                          ),
-                          Text(
-                            'Version ${packageInfo.version}',
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                            Icon(
+                              Icons.folder_shared_outlined,
+                              color: Colors.blueGrey,
                             ),
-                          ),
-                          const Text(
-                            'Cloud workflow: Up Down Share',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontStyle: FontStyle.italic,
+                            Icon(
+                              Icons.article_outlined,
+                              color: Colors.blueGrey,
                             ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const Spacer(),
-                          Row(
-                            mainAxisAlignment: .spaceEvenly,
-                            children: [
-                              Column(
-                                mainAxisSize: .min,
-                                children: const [
-                                  CircleAvatar(
-                                    child: Icon(Icons.file_copy_outlined),
-                                  ),
-                                  Text('Files', style: TextStyle(fontSize: 12)),
-                                ],
-                              ),
-                              Column(
-                                mainAxisSize: .min,
-                                children: const [
-                                  CircleAvatar(
-                                    child: Icon(Icons.folder_shared_outlined),
-                                  ),
-                                  Text(
-                                    'Shared',
-                                    style: TextStyle(fontSize: 12),
-                                  ),
-                                ],
-                              ),
-                              Column(
-                                mainAxisSize: .min,
-                                children: const [
-                                  CircleAvatar(
-                                    child: Icon(Icons.article_outlined),
-                                  ),
-                                  Text('Notes', style: TextStyle(fontSize: 12)),
-                                ],
-                              ),
-                              Column(
-                                mainAxisSize: .min,
-                                children: const [
-                                  CircleAvatar(
-                                    child: Icon(Icons.photo_library_outlined),
-                                  ),
-                                  Text(
-                                    'Gallery',
-                                    style: TextStyle(fontSize: 12),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                            Icon(
+                              Icons.photo_library_outlined,
+                              color: Colors.blueGrey,
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                  Positioned(
-                    right: 0,
-                    child: IconButton.filled(
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                      icon: Icon(Icons.close, color: Colors.black),
-                    ),
+                  const SizedBox(height: 10),
+                  ListTile(
+                    leading: Icon(Icons.account_circle_rounded),
+                    title: const Text('Add Count'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) => const AddCuentaScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.settings),
+                    title: const Text('Settings'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) => const SettingsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  const Divider(
+                    color: Colors.white30,
+                    indent: 20,
+                    endIndent: 20,
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.info_outline_rounded),
+                    title: const Text('Info'),
+                    onTap: () {
+                      Navigator.pop(context);
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.code),
+                    title: const Text('About'),
+                    onTap: () {
+                      Navigator.pop(context);
+                    },
                   ),
                 ],
               ),
-              ListTile(
-                leading: Icon(Icons.account_circle_rounded),
-                title: const Text('Add Count'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (context) => const AddCuentaScreen(),
-                    ),
-                  );
-                },
+            ),
+            Container(
+              width: double.infinity,
+              padding: .symmetric(vertical: 6),
+              color: Theme.of(context).colorScheme.onPrimary,
+              child: Center(
+                child: Text(
+                  'v.${packageInfo.version}+${packageInfo.buildNumber}',
+                  style: TextStyle(fontSize: 10),
+                ),
               ),
-              ListTile(
-                leading: Icon(Icons.settings),
-                title: const Text('Settings'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (context) => const SettingsScreen(),
-                    ),
-                  );
-                },
-              ),
-              const Divider(color: Colors.white30, indent: 20, endIndent: 20),
-              ListTile(
-                leading: Icon(Icons.info_outline_rounded),
-                title: const Text('Info'),
-                onTap: () {
-                  Navigator.pop(context);
-                  /*Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (context) => const InfoScreen(),
-                    ),
-                  );*/
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.code),
-                title: const Text('About'),
-                onTap: () {
-                  Navigator.pop(context);
-                },
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

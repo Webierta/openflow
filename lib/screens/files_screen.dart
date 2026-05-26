@@ -202,7 +202,7 @@ class _FilesScreenState extends State<FilesScreen> {
     bool responseUpload = await nextcloudService.uploadFile(
       file: file,
       fileStat: fileStat,
-      path: '$currentPath/$fileName',
+      path: '$currentPath$fileName',
       onProgress: onProgress,
     );
     if (responseUpload == true) {

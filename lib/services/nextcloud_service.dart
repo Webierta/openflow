@@ -16,6 +16,20 @@ part 'nextcloud_service_files.dart';
 part 'nextcloud_service_notes.dart';
 part 'nextcloud_service_shares.dart';
 
+/// CLASS NEXTCLOUDSERVICE (cuenta)
+///
+/// client (server, userName, password) => NextcloudClient
+///
+/// disconnect () => client.close()
+///
+/// API CLIENT PROVISIONINGAPI AND CORE
+///
+/// provisioningApi.users.getCurrentUser: connect () => UserDetails?
+///
+/// core.avatar.getAvatar : getAvatar (userId) => Uint8List?
+///
+/// core.preview.getPreview:: getPreview (path, x?, y?) => Uint8List?
+
 class NextcloudService {
   final CuentaNextcloud cuenta;
 
@@ -30,14 +44,20 @@ class NextcloudService {
   Future<UserDetails?>? connect() async {
     try {
       final responseUser = await client.provisioningApi.users.getCurrentUser();
-      return responseUser.body.ocs.data;
+      if (responseUser.statusCode == 200) {
+        return responseUser.body.ocs.data;
+      } else {
+        throw Error();
+      }
       /*final userDetails = responseUser.body.ocs.data;
       cuenta.userId = userDetails.id;
       cuenta.lastLogin = userDetails.lastLogin;
       var avatar = await getAvatar(userDetails.id);
       cuenta.statusAuth = StatusAuth.login;*/
+    } on DynamiteApiException catch (_) {
+      return null;
     } catch (e) {
-      print(e);
+      //print(e);
       return null;
     }
   }
@@ -52,26 +72,25 @@ class NextcloudService {
       final responseAvatar = await client.core.avatar.getAvatar(
         userId: userId,
         size: AvatarGetAvatarSize.$64,
+        guestFallback: AvatarGetAvatarGuestFallback.$1,
       );
       if (responseAvatar.statusCode == 200) {
-        //cuenta.avatar = responseAvatar.body;
         return responseAvatar.body;
       } else {
         return null;
       }
-    } on DynamiteStatusCodeException catch (_) {
+    } on DynamiteApiException catch (_) {
       final responseAvatarGuest = await client.core.guestAvatar.getAvatar(
         guestName: userId,
         size: GuestAvatarGetAvatarSize.$64,
       );
       if (responseAvatarGuest.statusCode == 201) {
-        //cuenta.avatar = responseAvatarGuest.body;
         return responseAvatarGuest.body;
       } else {
         return null;
       }
     } catch (e) {
-      print(e);
+      //print(e);
       return null;
     }
   }
@@ -83,10 +102,13 @@ class NextcloudService {
         x: x,
         y: y,
         mode: PreviewGetPreviewMode.fill,
+        //a: PreviewGetPreviewA.$0,
       );
       return responsePreview.body;
+    } on DynamiteApiException catch (_) {
+      return null;
     } catch (e) {
-      print(e);
+      //print(e);
       return null;
     }
   }

@@ -35,9 +35,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
   void loadCuenta() {
     if (widget.cuentaSelect != null) {
-      setState(() {
-        cuentaSelect = widget.cuentaSelect;
-      });
+      setState(() => cuentaSelect = widget.cuentaSelect);
     }
   }
 
@@ -52,83 +50,78 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Conecta la nube'),
-          content: SizedBox(
-            //width: MediaQuery.of(context).size.width * 0.9,
-            child: Column(
-              mainAxisSize: .min,
-              children: [
-                FittedBox(
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<CuentaNextcloud>(
-                      padding: .all(0),
-                      hint: cuentaSelect == null
-                          ? Text('Selecciona una cuenta')
-                          //: RowAvatar(cuenta: cuentaSelect!),
-                          : Row(
-                              mainAxisSize: .min,
-                              children: [
-                                // CuentaAvatar(cuenta: cuenta, size: 30, onlyAvatar: true),
-                                if (cuentaSelect!.avatar != null)
-                                  Badge(
-                                    label: Text('✔'),
-                                    backgroundColor: Colors.green,
-                                    alignment: AlignmentGeometry.bottomRight,
-                                    offset: Offset(0, -10),
-                                    child: Image.memory(
-                                      cuentaSelect!.avatar!,
-                                      height: 30,
-                                      width: 30,
-                                    ),
-                                  )
-                                else
-                                  Badge(
-                                    label: Text('✖'),
-                                    alignment: AlignmentGeometry.bottomRight,
-                                    offset: Offset(0, -10),
-                                    child: Icon(
-                                      Icons.person_off,
-                                      size: 30,
-                                      color: Colors.grey,
-                                    ),
+          title: ListTile(
+            leading: Icon(Icons.cloud_outlined, size: 48),
+            title: Text('Servidor', style: TextStyle(fontSize: 18)),
+          ),
+          content: Column(
+            mainAxisSize: .min,
+            children: [
+              FittedBox(
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<CuentaNextcloud>(
+                    padding: .all(0),
+                    hint: cuentaSelect == null
+                        ? Text('Selecciona cuenta')
+                        : Row(
+                            mainAxisSize: .min,
+                            children: [
+                              if (cuentaSelect!.avatar != null)
+                                Badge(
+                                  label: Text('✔'),
+                                  backgroundColor: Colors.green,
+                                  alignment: AlignmentGeometry.bottomRight,
+                                  offset: Offset(0, -10),
+                                  child: Image.memory(
+                                    cuentaSelect!.avatar!,
+                                    height: 30,
+                                    width: 30,
                                   ),
-                                const SizedBox(width: 20),
-                                Text(
-                                  cuentaSelect!.name,
-                                  style: TextStyle(fontSize: 18),
+                                )
+                              else
+                                Badge(
+                                  label: Text('✖'),
+                                  alignment: AlignmentGeometry.bottomRight,
+                                  offset: Offset(0, -10),
+                                  child: Icon(
+                                    Icons.person_off,
+                                    size: 30,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              const SizedBox(width: 20),
+                              Text(
+                                cuentaSelect!.name,
+                                style: TextStyle(fontSize: 18),
+                                maxLines: 1,
+                                overflow: TextOverflow.fade,
+                              ),
+                            ],
+                          ),
+                    onChanged: (CuentaNextcloud? cuenta) async {
+                      Navigator.of(context).pop();
+                      if (cuenta != null) {
+                        setState(() => cuentaSelect = cuenta);
+                        await connectCuenta();
+                      }
+                    },
+                    items: cuentas
+                        .map<DropdownMenuItem<CuentaNextcloud>>(
+                          (CuentaNextcloud cuenta) =>
+                              DropdownMenuItem<CuentaNextcloud>(
+                                value: cuenta,
+                                child: Text(
+                                  cuenta.name,
                                   maxLines: 1,
-                                  overflow: TextOverflow.fade,
+                                  overflow: TextOverflow.visible,
                                 ),
-                              ],
-                            ),
-                      onChanged: (CuentaNextcloud? cuenta) async {
-                        Navigator.of(context).pop();
-                        if (cuenta != null) {
-                          setState(() => cuentaSelect = cuenta);
-                          await connectCuenta();
-                        }
-                      },
-                      items: cuentas
-                          .map<DropdownMenuItem<CuentaNextcloud>>(
-                            (CuentaNextcloud cuenta) =>
-                                DropdownMenuItem<CuentaNextcloud>(
-                                  value: cuenta,
-                                  /*child: FittedBox(
-                                      child: RowAvatar(cuenta: cuenta),
-                                    ),*/
-                                  child: Text(
-                                    cuenta.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.visible,
-                                  ),
-                                ),
-                          )
-                          .toList(),
-                    ),
+                              ),
+                        )
+                        .toList(),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
@@ -189,8 +182,6 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     nextcloudService.disconnect();
     ref.read(cuentasProvider.notifier).desconectar(cuentaSelect!);
     setState(() {
-      //cuentaSelect = cuentaSelect!.copyWith(statusAuth: StatusAuth.logout);
-      //cuentaSelect = cuentaSelect!.copyWith(avatar: null);
       cuentaSelect = null;
     });
     if (mounted) {
@@ -289,7 +280,6 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                 )
               : Row(
                   children: [
-                    //CuentaAvatar(cuenta: cuentaSelect!, size: 30),
                     if (cuentaSelect!.avatar != null)
                       Badge(
                         label: Text('✔'),
